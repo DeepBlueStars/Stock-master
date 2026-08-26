@@ -3,3 +3,14 @@
 /.comet/*
 !/.comet/config.yaml
 # <<< Comet managed project state <<<
+# StockAI-Console
+StockAI-Console/dist
+StockAI-Console/node_modules
+StockAI-Console/.trae
+StockAI-Console/dist.tar.gz
+
+# trade-sentry
+trade-sentry/frontend/dist
+trade-sentry/frontend/node_modules
+trade-sentry/frontend/.trae
+trade-sentry/frontend/dist.tar.gz
