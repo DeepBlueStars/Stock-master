@@ -1,0 +1,330 @@
+<script setup>
+import { ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { Menu as MenuIcon, Document, Setting, Bell, User } from '@element-plus/icons-vue'
+
+const router = useRouter()
+const route = useRoute()
+const isDarkMode = ref(false)
+
+// 菜单选择事件
+const handleMenuSelect = (index) => {
+  router.push(index)
+}
+
+// 切换深色模式
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value
+  document.documentElement.classList.toggle('dark', isDarkMode.value)
+}
+</script>
+
+<template>
+  <div class="common-layout" :class="{ 'dark': isDarkMode }">
+    <!-- 顶部导航栏 -->
+    <el-header class="app-header">
+      <div class="header-left">
+        <h1 class="app-title">StockAI</h1>
+      </div>
+      <div class="header-right">
+        <el-dropdown>
+          <span class="el-dropdown-link header-action">
+            <el-icon><Bell /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item>无新消息</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-button type="text" class="header-action" @click="toggleDarkMode">
+          <el-icon>{{ isDarkMode ? 'Sunny' : 'Moon' }}</el-icon>
+        </el-button>
+        <el-dropdown>
+          <span class="el-dropdown-link header-action user-profile">
+            <el-icon><User /></el-icon>
+            <span class="user-name">管理员</span>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item>个人中心</el-dropdown-item>
+              <el-dropdown-item>设置</el-dropdown-item>
+              <el-dropdown-item divided>退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+    </el-header>
+    
+    <el-container class="main-container">
+      <!-- 左侧菜单 -->
+      <el-aside width="260px" class="app-sidebar">
+        <el-menu
+          :default-active="route.path"
+          class="sidebar-menu"
+          @select="handleMenuSelect"
+          background-color="transparent"
+          text-color="var(--el-text-color-primary)"
+          active-text-color="#409eff"
+        >
+          <el-menu-item index="/">
+            <el-icon><MenuIcon /></el-icon>
+            <span>总览</span>
+          </el-menu-item>
+          <el-menu-item index="/stock">
+            <el-icon><Document /></el-icon>
+            <span>股票</span>
+          </el-menu-item>
+          <el-menu-item index="/config">
+            <el-icon><Setting /></el-icon>
+            <span>配置</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+      
+      <!-- 主内容区 -->
+      <el-main class="app-content">
+        <router-view />
+      </el-main>
+    </el-container>
+  </div>
+</template>
+
+<style scoped>
+.common-layout {
+  height: 100vh;
+  background-color: #f8fafc;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.common-layout.dark {
+  background-color: #0f172a;
+}
+
+/* 顶部导航栏 */
+.app-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 64px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.dark .app-header {
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  color: #64748b;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.header-action:hover {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.dark .header-action {
+  color: #cbd5e1;
+}
+
+.dark .header-action:hover {
+  background-color: #334155;
+  color: #f1f5f9;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: auto;
+  color: #334155;
+}
+
+.dark .user-profile {
+  color: #f1f5f9;
+}
+
+.user-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* 主容器 */
+.main-container {
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
+/* 左侧菜单 */
+.app-sidebar {
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 1px 0 3px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.dark .app-sidebar {
+  background-color: #1e293b;
+  border-right: 1px solid #334155;
+  box-shadow: 1px 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.sidebar-menu {
+  height: 100%;
+  border-right: none;
+  background-color: transparent;
+  padding: 1rem 0;
+}
+
+.sidebar-menu .el-menu-item {
+  height: 50px;
+  line-height: 50px;
+  margin: 0 0.5rem;
+  border-radius: 8px;
+  margin-bottom: 0.25rem;
+  transition: all 0.2s ease;
+  font-size: 0.9375rem;
+}
+
+.sidebar-menu .el-menu-item:hover {
+  background-color: #f1f5f9;
+}
+
+.dark .sidebar-menu .el-menu-item:hover {
+  background-color: #334155;
+}
+
+.sidebar-menu .el-menu-item.is-active {
+  background-color: #eff6ff;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.dark .sidebar-menu .el-menu-item.is-active {
+  background-color: #1e3a8a;
+  color: #60a5fa;
+}
+
+.sidebar-menu .el-menu-item .el-icon {
+  margin-right: 0.75rem;
+  font-size: 1.125rem;
+}
+
+/* 主内容区 */
+.app-content {
+  padding: 2rem;
+  background-color: #f8fafc;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.dark .app-content {
+  background-color: #0f172a;
+}
+
+/* 卡片样式 */
+.app-content .el-card {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+
+.dark .app-content .el-card {
+  border: 1px solid #334155;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  background-color: #1e293b;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .app-sidebar {
+    width: 240px;
+  }
+  
+  .app-content {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 1rem;
+  }
+  
+  .app-title {
+    font-size: 1.25rem;
+  }
+  
+  .header-right {
+    gap: 0.5rem;
+  }
+  
+  .user-name {
+    display: none;
+  }
+  
+  .app-sidebar {
+    width: 200px;
+  }
+  
+  .app-content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 0 0.75rem;
+  }
+  
+  .app-title {
+    font-size: 1.125rem;
+  }
+  
+  .app-content {
+    padding: 0.75rem;
+  }
+}
+</style>
