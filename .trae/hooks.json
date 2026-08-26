@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"D:/WorkSpace/MainProject/StockAI-master/.trae/skills/comet/scripts/comet-hook-router.mjs\" --platform \"trae\" --project-root \"D:/WorkSpace/MainProject/StockAI-master\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
