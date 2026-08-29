@@ -11,13 +11,14 @@ import com.xian.stockai.po.PositionMonitor;
 import com.xian.stockai.service.notify.NotificationSender;
 import com.xian.stockai.vo.MonitorSaveRequest;
 import com.xian.stockai.vo.Result;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,8 +38,14 @@ class MonitorServiceTest {
     @Mock
     private NotificationSender notificationSender;
 
-    @InjectMocks
     private MonitorService monitorService;
+
+    @BeforeEach
+    void setUp() {
+        monitorService = new MonitorService(
+                positionMonitorRepository, positionRepository, marketQuotesRepository,
+                etfDailyQuotesRepository, List.of(notificationSender));
+    }
 
     private static final String USER_ID = "u1";
     private static final String SYMBOL = "000001";
@@ -221,5 +228,21 @@ class MonitorServiceTest {
 
         verify(notificationSender).send(any());
         assertEquals(MonitorService.DIR_TAKE_PROFIT, rule.getLastTriggerDirection());
+    }
+
+    @Test
+    void notifyInvokesAllSenders() {
+        NotificationSender sender2 = mock(NotificationSender.class);
+        MonitorService multiService = new MonitorService(
+                positionMonitorRepository, positionRepository, marketQuotesRepository,
+                etfDailyQuotesRepository, List.of(notificationSender, sender2));
+        PositionMonitor rule = priceTpRule();
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("16.00"));
+        when(positionRepository.findByUserIdAndSymbol(USER_ID, SYMBOL)).thenReturn(position(new BigDecimal("10.00")));
+
+        multiService.checkRule(rule);
+
+        verify(notificationSender).send(any());
+        verify(sender2).send(any());
     }
 }

@@ -33,18 +33,18 @@ public class MonitorService {
     private final PositionRepository positionRepository;
     private final MarketQuotesRepository marketQuotesRepository;
     private final EtfDailyQuotesRepository etfDailyQuotesRepository;
-    private final NotificationSender notificationSender;
+    private final List<NotificationSender> notificationSenders;
 
     public MonitorService(PositionMonitorRepository positionMonitorRepository,
                           PositionRepository positionRepository,
                           MarketQuotesRepository marketQuotesRepository,
                           EtfDailyQuotesRepository etfDailyQuotesRepository,
-                          NotificationSender notificationSender) {
+                          List<NotificationSender> notificationSenders) {
         this.positionMonitorRepository = positionMonitorRepository;
         this.positionRepository = positionRepository;
         this.marketQuotesRepository = marketQuotesRepository;
         this.etfDailyQuotesRepository = etfDailyQuotesRepository;
-        this.notificationSender = notificationSender;
+        this.notificationSenders = notificationSenders;
     }
 
     public Result<PositionMonitor> save(MonitorSaveRequest req) {
@@ -223,6 +223,8 @@ public class MonitorService {
         String label = DIR_TAKE_PROFIT.equals(direction) ? "止盈" : "止损";
         notification.setContent(String.format("【%s提醒】%s(%s) 最新收盘价 %s 已触发%s",
                 label, rule.getStockName(), rule.getSymbol(), close.toPlainString(), label));
-        notificationSender.send(notification);
+        for (NotificationSender sender : notificationSenders) {
+            sender.send(notification);
+        }
     }
 }
