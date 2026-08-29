@@ -1,11 +1,22 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Menu as MenuIcon, Document, Setting, Bell, User } from '@element-plus/icons-vue'
+import axios from 'axios'
+import config from './config/config'
+
+const BASE_URL = config.baseUrl
+const USER_ID = '6928fca14f206ada1b7a9269'
 
 const router = useRouter()
 const route = useRoute()
 const isDarkMode = ref(false)
+
+// 站内提醒
+const notifications = ref([])
+const showNotificationDrawer = ref(false)
+const loadingNotifications = ref(false)
+const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
 // 菜单选择事件
 const handleMenuSelect = (index) => {
@@ -17,6 +28,52 @@ const toggleDarkMode = () => {
   isDarkMode.value = !isDarkMode.value
   document.documentElement.classList.toggle('dark', isDarkMode.value)
 }
+
+async function fetchNotifications() {
+  loadingNotifications.value = true
+  try {
+    const response = await axios.post(`${BASE_URL}/notification/list`, { userId: USER_ID })
+    if (response.data && response.data.state === 0 && Array.isArray(response.data.data)) {
+      notifications.value = response.data.data
+    }
+  } catch (error) {
+    console.error('获取站内提醒失败:', error)
+  } finally {
+    loadingNotifications.value = false
+  }
+}
+
+function openNotifications() {
+  showNotificationDrawer.value = true
+  fetchNotifications()
+}
+
+async function markOneRead(id) {
+  try {
+    const response = await axios.post(`${BASE_URL}/notification/read`, { userId: USER_ID, ids: [id] })
+    if (response.data && response.data.state === 0) {
+      const n = notifications.value.find(item => item.id === id)
+      if (n) n.read = true
+    }
+  } catch (error) {
+    console.error('标记已读失败:', error)
+  }
+}
+
+async function markAllRead() {
+  const ids = notifications.value.filter(n => !n.read).map(n => n.id)
+  if (ids.length === 0) return
+  try {
+    const response = await axios.post(`${BASE_URL}/notification/read`, { userId: USER_ID, ids })
+    if (response.data && response.data.state === 0) {
+      notifications.value.forEach(n => { n.read = true })
+    }
+  } catch (error) {
+    console.error('标记全部已读失败:', error)
+  }
+}
+
+onMounted(fetchNotifications)
 </script>
 
 <template>
@@ -27,16 +84,11 @@ const toggleDarkMode = () => {
         <h1 class="app-title">StockAI</h1>
       </div>
       <div class="header-right">
-        <el-dropdown>
-          <span class="el-dropdown-link header-action">
+        <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99">
+          <span class="el-dropdown-link header-action" @click="openNotifications">
             <el-icon><Bell /></el-icon>
           </span>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item>无新消息</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+        </el-badge>
         <el-button type="text" class="header-action" @click="toggleDarkMode">
           <el-icon>{{ isDarkMode ? 'Sunny' : 'Moon' }}</el-icon>
         </el-button>
@@ -87,6 +139,36 @@ const toggleDarkMode = () => {
         <router-view />
       </el-main>
     </el-container>
+
+    <!-- 站内提醒抽屉 -->
+    <el-drawer v-model="showNotificationDrawer" title="站内提醒" size="420px">
+      <div v-loading="loadingNotifications" class="notification-list">
+        <el-empty v-if="!loadingNotifications && notifications.length === 0" description="暂无提醒" />
+        <div
+          v-for="n in notifications"
+          :key="n.id"
+          class="notification-item"
+          :class="{ 'notification-unread': !n.read }"
+        >
+          <div class="notification-head">
+            <el-tag :type="n.type === 'TAKE_PROFIT' ? 'success' : 'danger'" size="small">
+              {{ n.type === 'TAKE_PROFIT' ? '止盈' : '止损' }}
+            </el-tag>
+            <span class="notification-stock">{{ n.stockName }}（{{ n.symbol }}）</span>
+          </div>
+          <div class="notification-content">{{ n.content }}</div>
+          <div class="notification-foot">
+            <span class="notification-time">{{ n.createdAt }}</span>
+            <el-button v-if="!n.read" type="primary" link size="small" @click="markOneRead(n.id)">
+              标记已读
+            </el-button>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="markAllRead" :disabled="unreadCount === 0">全部已读</el-button>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
@@ -326,5 +408,41 @@ const toggleDarkMode = () => {
   .app-content {
     padding: 0.75rem;
   }
+}
+
+.notification-list {
+  min-height: 200px;
+}
+.notification-item {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+.notification-unread {
+  background-color: #eff6ff;
+}
+.notification-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.notification-stock {
+  font-weight: 600;
+  color: #1f2937;
+}
+.notification-content {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.notification-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.notification-time {
+  font-size: 12px;
+  color: #9ca3af;
 }
 </style>
