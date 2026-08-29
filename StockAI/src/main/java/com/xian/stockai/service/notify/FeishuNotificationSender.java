@@ -60,7 +60,8 @@ public class FeishuNotificationSender implements NotificationSender {
                 log.debug("飞书推送成功: userId={}, symbol={}", notification.getUserId(), notification.getSymbol());
             }
         } catch (Exception e) {
-            log.error("飞书推送异常: userId={}, symbol={}", notification.getUserId(), notification.getSymbol(), e);
+            log.error("飞书推送异常: userId={}, symbol={}, error={}",
+                    notification.getUserId(), notification.getSymbol(), e.getClass().getSimpleName());
         }
     }
 
