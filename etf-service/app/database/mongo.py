@@ -10,7 +10,8 @@ load_dotenv()
 class MongoDBClient:
     def __init__(self):
         # 数据库连接配置
-        self.mongo_url = os.getenv("MONGO_URL", "mongodb://admin:tradingagents123@192.168.31.88:27017/tradingagents?authSource=admin")
+        # self.mongo_url = os.getenv("MONGO_URL", "mongodb://admin:tradingagents123@192.168.31.88:27017/tradingagents?authSource=admin")
+        self.mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017/tradingagents")
         self.db_name = os.getenv("MONGO_DB_NAME", "tradingagents")
         
         # 初始化客户端和数据库
