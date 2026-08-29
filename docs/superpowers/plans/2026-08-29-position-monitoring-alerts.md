@@ -31,7 +31,8 @@ base-ref: 65c06986ee86257c466e257fe568d97622f2b3a1
 - 收益率模式：`(close - avgCostPrice) / avgCostPrice`，`avgCostPrice` 为空或 0 时不触发（不除零）。
 - 所有 BigDecimal 比较用 `compareTo`，除法用 `RoundingMode.HALF_UP`。
 - 前端 API 地址取自 `src/config/config.js` 的 `baseUrl`；用户 ID 沿用现有硬编码 `6928fca14f206ada1b7a9269`。
-- 不接入飞书、不新增盘中行情、不做自动下单。
+- 飞书推送可选启用：全局 webhook（`feishu.enabled` 默认 `false`），通过 `@ConditionalOnProperty` 门控 `FeishuNotificationSender` bean；推送失败仅记日志，不影响站内提醒。
+- 不新增盘中行情、不做自动下单。
 
 ---
 
@@ -47,6 +48,7 @@ base-ref: 65c06986ee86257c466e257fe568d97622f2b3a1
 | `dao/NotificationRepository.java` | 提醒查询/更新 |
 | `service/notify/NotificationSender.java` | 通知通道接口 |
 | `service/notify/InAppNotificationSender.java` | 站内提醒实现（写 `notification`） |
+| `service/notify/FeishuNotificationSender.java` | 飞书机器人推送实现（`RestClient` + 可选加签，`@ConditionalOnProperty` 门控） |
 | `service/MonitorService.java` | 规则 CRUD + 触达判定 + 去重 + `checkAll` |
 | `service/NotificationService.java` | 提醒列表/标记已读 |
 | `task/MonitorTask.java` | 每日定时判定 |
@@ -61,10 +63,13 @@ base-ref: 65c06986ee86257c466e257fe568d97622f2b3a1
 | `service/MonitorServiceTest.java` | CRUD + 四模式判定 + 去重 + ETF 价格源 |
 | `service/NotificationServiceTest.java` | 列表/标记已读 |
 | `service/notify/InAppNotificationSenderTest.java` | 写库为未读 |
+| `service/notify/FeishuNotificationSenderTest.java` | payload 结构、加签、失败吞异常 |
 
 **后端修改：**
 
 - `src/main/resources/application.yml`：新增 `monitor.cron` 配置项。
+- `src/main/resources/application.yml`：新增 `feishu.enabled/webhook-url/secret` 配置项。
+- `service/MonitorService.java`：`NotificationSender` 单注入改为 `List<NotificationSender>` 多渠道循环。
 
 **前端修改（`StockAI-Console/src/`）：**
 
@@ -1848,6 +1853,334 @@ Expected: 构建成功，无语法错误。
 
 ```bash
 git add -A && git commit -m "fix: 联调修复止盈止损监控问题"
+```
+
+---
+
+## Task 12: 飞书配置 + FeishuNotificationSender（tasks.md 6.1 / 6.2）
+
+**Files:**
+- Modify: `StockAI/src/main/resources/application.yml`（新增 `feishu.*`）
+- Create: `StockAI/src/main/java/com/xian/stockai/service/notify/FeishuNotificationSender.java`
+- Test: `StockAI/src/test/java/com/xian/stockai/service/notify/FeishuNotificationSenderTest.java`
+
+**Interfaces:**
+- Consumes: `Notification`（Task 1）、`NotificationSender`（Task 3）
+- Produces: `FeishuNotificationSender implements NotificationSender`（`@ConditionalOnProperty(prefix="feishu", name="enabled", havingValue="true")` 门控；`buildPayload` / `sign` 为包级可见，供测试）
+
+- [ ] **Step 1: 在 `application.yml` 末尾追加配置**
+
+```yaml
+# 飞书自定义机器人推送（默认关闭）
+feishu:
+  enabled: false
+  webhook-url: ""
+  secret: ""
+```
+
+- [ ] **Step 2: 写失败测试 `FeishuNotificationSenderTest`**
+
+`StockAI/src/test/java/com/xian/stockai/service/notify/FeishuNotificationSenderTest.java`：
+
+```java
+package com.xian.stockai.service.notify;
+
+import com.xian.stockai.po.Notification;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+
+class FeishuNotificationSenderTest {
+
+    private static final String WEBHOOK_URL = "https://open.feishu.cn/open-apis/bot/v2/hook/test";
+
+    private FeishuNotificationSender sender(String secret) {
+        return new FeishuNotificationSender(RestClient.builder(), WEBHOOK_URL, secret);
+    }
+
+    private Notification notification() {
+        Notification n = new Notification();
+        n.setUserId("u1");
+        n.setSymbol("000001");
+        n.setStockName("平安银行");
+        n.setContent("【止盈提醒】平安银行(000001) 最新收盘价 15.00 已触发止盈");
+        return n;
+    }
+
+    @Test
+    void buildPayloadUsesTextMessageWithoutSignature() {
+        Map<String, Object> payload = sender("").buildPayload(notification());
+        assertEquals("text", payload.get("msg_type"));
+        Map<?, ?> content = (Map<?, ?>) payload.get("content");
+        assertEquals("【止盈提醒】平安银行(000001) 最新收盘价 15.00 已触发止盈", content.get("text"));
+        assertNull(payload.get("timestamp"));
+        assertNull(payload.get("sign"));
+    }
+
+    @Test
+    void buildPayloadAddsSignatureWhenSecretPresent() {
+        Map<String, Object> payload = sender("test-secret").buildPayload(notification());
+        assertNotNull(payload.get("timestamp"));
+        assertNotNull(payload.get("sign"));
+        assertFalse(payload.get("sign").toString().isEmpty());
+    }
+
+    @Test
+    void signMatchesHmacSha256Base64() {
+        long timestamp = 1700000000L;
+        String expected = hmacSha256Base64(timestamp + "\n" + "test-secret", "test-secret");
+        assertEquals(expected, sender("test-secret").sign(timestamp, "test-secret"));
+    }
+
+    @Test
+    void sendSwallowsHttpError() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo(WEBHOOK_URL)).andRespond(withServerError());
+        FeishuNotificationSender sender = new FeishuNotificationSender(builder, WEBHOOK_URL, "");
+        assertDoesNotThrow(() -> sender.send(notification()));
+    }
+
+    private String hmacSha256Base64(String data, String key) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] signData = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(signData);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+}
+```
+
+- [ ] **Step 3: 运行测试确认失败（编译失败即红）**
+
+Run: `./mvnw -q test -Dtest=FeishuNotificationSenderTest`
+Expected: 编译失败（`FeishuNotificationSender` 不存在）。
+
+- [ ] **Step 4: 实现 `FeishuNotificationSender`**
+
+`StockAI/src/main/java/com/xian/stockai/service/notify/FeishuNotificationSender.java`：
+
+```java
+package com.xian.stockai.service.notify;
+
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
+import com.xian.stockai.po.Notification;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author xian
+ * @description 飞书自定义机器人推送
+ */
+@Component
+@ConditionalOnProperty(prefix = "feishu", name = "enabled", havingValue = "true")
+@Slf4j
+public class FeishuNotificationSender implements NotificationSender {
+
+    private final RestClient restClient;
+    private final String webhookUrl;
+    private final String secret;
+
+    public FeishuNotificationSender(RestClient.Builder restClientBuilder,
+                                    @Value("${feishu.webhook-url:}") String webhookUrl,
+                                    @Value("${feishu.secret:}") String secret) {
+        this.restClient = restClientBuilder.build();
+        this.webhookUrl = webhookUrl;
+        this.secret = secret;
+    }
+
+    @Override
+    public void send(Notification notification) {
+        try {
+            if (webhookUrl == null || webhookUrl.isEmpty()) {
+                log.warn("飞书 webhook-url 未配置，跳过推送");
+                return;
+            }
+            Map<String, Object> payload = buildPayload(notification);
+            String response = restClient.post()
+                    .uri(webhookUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(JSON.toJSONString(payload))
+                    .retrieve()
+                    .body(String.class);
+            JSONObject node = JSON.parseObject(response);
+            Integer code = node.getInteger("code");
+            if (code == null || code != 0) {
+                log.warn("飞书推送失败: code={}, msg={}", code, node.getString("msg"));
+            } else {
+                log.debug("飞书推送成功: userId={}, symbol={}", notification.getUserId(), notification.getSymbol());
+            }
+        } catch (Exception e) {
+            log.error("飞书推送异常: userId={}, symbol={}", notification.getUserId(), notification.getSymbol(), e);
+        }
+    }
+
+    Map<String, Object> buildPayload(Notification notification) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("msg_type", "text");
+        Map<String, String> content = new HashMap<>();
+        content.put("text", notification.getContent());
+        payload.put("content", content);
+        if (secret != null && !secret.isEmpty()) {
+            long timestamp = System.currentTimeMillis() / 1000;
+            payload.put("timestamp", timestamp);
+            payload.put("sign", sign(timestamp, secret));
+        }
+        return payload;
+    }
+
+    String sign(long timestamp, String secret) {
+        try {
+            String stringToSign = timestamp + "\n" + secret;
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] signData = mac.doFinal(stringToSign.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(signData);
+        } catch (Exception e) {
+            throw new IllegalStateException("飞书加签失败", e);
+        }
+    }
+}
+```
+
+- [ ] **Step 5: 运行测试确认通过**
+
+Run: `./mvnw -q test -Dtest=FeishuNotificationSenderTest`
+Expected: 4 个测试全部通过。
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add StockAI/src/main/resources/application.yml StockAI/src/main/java/com/xian/stockai/service/notify/FeishuNotificationSender.java StockAI/src/test/java/com/xian/stockai/service/notify/FeishuNotificationSenderTest.java
+git commit -m "feat: 新增飞书自定义机器人推送通道"
+```
+
+---
+
+## Task 13: MonitorService 多渠道接线 + 多通道单测（tasks.md 6.3 / 6.4）
+
+**Files:**
+- Modify: `StockAI/src/main/java/com/xian/stockai/service/MonitorService.java`（单 `NotificationSender` → `List<NotificationSender>`）
+- Modify: `StockAI/src/test/java/com/xian/stockai/service/MonitorServiceTest.java`（改为手动构造注入 List + 新增多通道用例）
+
+**Interfaces:**
+- Consumes: `NotificationSender`（Task 3）、`FeishuNotificationSender`（Task 12，条件存在）
+- Produces: `MonitorService` 构造器签名变为 `List<NotificationSender>`；`notify()` 遍历所有 sender
+
+- [ ] **Step 1: 改 `MonitorService` 注入与 `notify()`**
+
+1. 字段 `private final NotificationSender notificationSender;` → `private final List<NotificationSender> notificationSenders;`
+2. 构造器参数 `NotificationSender notificationSender` → `List<NotificationSender> notificationSenders`，赋值同步改名。
+3. 顶部 import 新增 `java.util.List`。
+4. `notify()` 末尾 `notificationSender.send(notification);` → 循环：
+
+```java
+        for (NotificationSender sender : notificationSenders) {
+            sender.send(notification);
+        }
+```
+
+- [ ] **Step 2: 更新 `MonitorServiceTest`**
+
+1. 删除 `@InjectMocks private MonitorService monitorService;`，改为手动构造（`@BeforeEach`）：
+
+```java
+    @BeforeEach
+    void setUp() {
+        monitorService = new MonitorService(
+                positionMonitorRepository, positionRepository, marketQuotesRepository,
+                etfDailyQuotesRepository, List.of(notificationSender));
+    }
+```
+
+（保留现有 `@Mock ... NotificationSender notificationSender;` 字段与 `monitorService` 字段；顶部 import 新增 `java.util.List` 与 `org.junit.jupiter.api.BeforeEach`。）
+
+2. 新增多通道用例（放在类末尾）：
+
+```java
+    @Test
+    void notifyInvokesAllSenders() {
+        NotificationSender sender2 = mock(NotificationSender.class);
+        MonitorService multiService = new MonitorService(
+                positionMonitorRepository, positionRepository, marketQuotesRepository,
+                etfDailyQuotesRepository, List.of(notificationSender, sender2));
+        PositionMonitor rule = priceTpRule();
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("16.00"));
+        when(positionRepository.findByUserIdAndSymbol(USER_ID, SYMBOL)).thenReturn(position(new BigDecimal("10.00")));
+
+        multiService.checkRule(rule);
+
+        verify(notificationSender).send(any());
+        verify(sender2).send(any());
+    }
+```
+
+- [ ] **Step 3: 运行测试确认通过**
+
+Run: `./mvnw -q test -Dtest=MonitorServiceTest`
+Expected: 原 8 个用例 + `notifyInvokesAllSenders` 全部通过（9 个）。
+
+- [ ] **Step 4: 后端全量测试**
+
+Run: `./mvnw -q test`
+Expected: BUILD SUCCESS（含 `FeishuNotificationSenderTest`、`MonitorServiceTest`、`NotificationServiceTest`、`InAppNotificationSenderTest`）。
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add StockAI/src/main/java/com/xian/stockai/service/MonitorService.java StockAI/src/test/java/com/xian/stockai/service/MonitorServiceTest.java
+git commit -m "feat: MonitorService 改为 List<NotificationSender> 多渠道发送"
+```
+
+---
+
+## Task 14: 端到端联调飞书推送（tasks.md 6.5）
+
+**Files:** 无新增（验证与修复）
+
+- [ ] **Step 1: 后端全量测试 + 前端构建**
+
+Run: 在 `StockAI` 执行 `./mvnw test`；在 `StockAI-Console` 执行 `npm run build`
+Expected: 均成功。
+
+- [ ] **Step 2: 端到端联调（真实 webhook）**
+
+1. 在飞书群添加自定义机器人，取得 webhook URL（可选加签密钥）。
+2. `application.yml` 设 `feishu.enabled: true`、`webhook-url` 与 `secret`。
+3. 启动后端 `./mvnw spring-boot:run`，构造触达现价并触发判定。
+4. 验证：飞书群收到机器人文本消息，且 `notification` 集合仍生成站内提醒（两者互不影响）。
+
+- [ ] **Step 3: 修复联调发现的问题后重复 Step 1**
+
+- [ ] **Step 4: Commit（如有修复）**
+
+```bash
+git add -A && git commit -m "fix: 联调修复飞书推送问题"
 ```
 
 ---
