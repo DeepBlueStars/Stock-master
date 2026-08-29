@@ -28,3 +28,7 @@ logging:
   level:
     org.springframework.ai.chat.client.advisor: DEBUG
     com.xian.stockai: DEBUG
+
+# 止盈止损监控定时任务 cron（工作日收盘后 15:30）
+monitor:
+  cron: "0 30 15 * * ?"
