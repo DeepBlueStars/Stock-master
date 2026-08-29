@@ -24,7 +24,7 @@ archived: false
 bound_branch: master
 direct_override: null
 handoff_context: docs/openspec/changes/position-monitoring-alerts/.comet/handoff/design-context.json
-handoff_hash: a2b98cfdb91bc10948efaa8d2f34c328a40ddf594cd030876863eef5231edf1b
+handoff_hash: 5c08e372276ecbe822a515e6a01f0228ded1a83e7d0cca7b1531d23e3ae07049
 classic_profile: full
 classic_migration: 1
 run_id: 9207ecef-a0a5-4543-855a-6b4a3a08f473

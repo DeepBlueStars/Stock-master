@@ -3,7 +3,7 @@
 - Change: position-monitoring-alerts
 - Phase: design
 - Mode: compact
-- Context hash: a2b98cfdb91bc10948efaa8d2f34c328a40ddf594cd030876863eef5231edf1b
+- Context hash: 5c08e372276ecbe822a515e6a01f0228ded1a83e7d0cca7b1531d23e3ae07049
 
 Generated-by: comet-handoff.sh
 
@@ -12,8 +12,8 @@ OpenSpec remains the canonical capability spec. This handoff is a deterministic,
 ## docs/openspec/changes/position-monitoring-alerts/proposal.md
 
 - Source: docs/openspec/changes/position-monitoring-alerts/proposal.md
-- Lines: 1-32
-- SHA256: 4e9366e2f7dde528bcda7275d2c77228f9a2f21dacdea018a9a47a876c56beb1
+- Lines: 1-33
+- SHA256: a1b9de5e1f004d413a0dbd38f97f438fb9fdde3a6b6868a1ab21c801c0291874
 
 ```md
 ## Why
@@ -28,7 +28,7 @@ OpenSpec remains the canonical capability spec. This handoff is a deterministic,
   - 收益率模式：设置相对持仓均价（`avgCostPrice`）的涨跌幅阈值。
 - 新增定时监测任务：基于日线收盘价（`market_quotes` / `etf_daily_quotes` 的 `close`）判定是否触达止盈/止损。
 - 触达后产生站内提醒（消息记录，支持已读/未读）；规则保持启用，可持续监控并重复提醒。
-- 提醒通道预留飞书机器人接入点，本期仅实现站内提醒。
+- 触达后（可选）推送飞书自定义机器人消息：通过全局 webhook 配置启用，推送失败不影响站内提醒。
 
 ## Capabilities
 
@@ -45,6 +45,7 @@ OpenSpec remains the canonical capability spec. This handoff is a deterministic,
 - 后端 StockAI（Java 21 / Spring Boot 3.5 / MongoDB）：
   - 新增 `position_monitor`（监控规则）与 `notification`（站内提醒）两个集合及对应 PO / Repository。
   - 新增监控 Service、Controller 与基于 `@Scheduled` 的定时判定任务。
+  - 新增 `FeishuNotificationSender`（通知通道实现），通过全局 webhook 配置（`feishu.*`）可选启用，复用 Spring 6 `RestClient` 发送。
 - 前端 StockAI-Console（Vue 3 / Vite / Element Plus）：
   - 持仓列表新增监控设置入口与止盈止损展示。
   - 新增站内提醒展示（未读提示与消息列表）。
@@ -107,50 +108,60 @@ OpenSpec remains the canonical capability spec. This handoff is a deterministic,
 ## docs/openspec/changes/position-monitoring-alerts/tasks.md
 
 - Source: docs/openspec/changes/position-monitoring-alerts/tasks.md
-- Lines: 1-27
-- SHA256: e1b1ab410f133c50392361035b9e7a60600d47a0467474bfd9520e16e2f83309
+- Lines: 1-35
+- SHA256: 6fa15fe5e78c916ea431f38a731eecb0eb5dac1dac14097c5740c458fe4199a0
 
 ```md
 ## 1. 后端数据模型
 
-- [ ] 1.1 新增 `PositionMonitor` PO（字段与 design.md 一致），验证：编译通过且字段映射符合 design
-- [ ] 1.2 新增 `Notification` PO，验证：编译通过
-- [ ] 1.3 新增 `PositionMonitorRepository` 与 `NotificationRepository`，验证：接口编译通过且查询方法符合 service 需求
+- [x] 1.1 新增 `PositionMonitor` PO（字段与 design.md 一致），验证：编译通过且字段映射符合 design
+- [x] 1.2 新增 `Notification` PO，验证：编译通过
+- [x] 1.3 新增 `PositionMonitorRepository` 与 `NotificationRepository`，验证：接口编译通过且查询方法符合 service 需求
 
 ## 2. 后端监控与提醒逻辑
 
-- [ ] 2.1 实现 `MonitorService` 的规则新增/修改/删除/启停，验证：单元测试覆盖保存与停用
-- [ ] 2.2 实现价格/收益率止盈止损判定（复用股票 `market_quotes` / ETF `etf_daily_quotes` 价格源），验证：单元测试覆盖四种模式
-- [ ] 2.3 实现 `NotificationSender` 接口与 `InAppNotificationSender`（写入 notification 集合），验证：单元测试触发后生成未读提醒
-- [ ] 2.4 实现去重逻辑（`lastTriggerDirection`），验证：单元测试证明同一方向不重复提醒、穿越回安全区间后再次提醒
-- [ ] 2.5 实现 `@Scheduled` 定时判定任务，验证：手动触发后仅对满足条件的启用规则生成提醒
+- [x] 2.1 实现 `MonitorService` 的规则新增/修改/删除/启停，验证：单元测试覆盖保存与停用
+- [x] 2.2 实现价格/收益率止盈止损判定（复用股票 `market_quotes` / ETF `etf_daily_quotes` 价格源），验证：单元测试覆盖四种模式
+- [x] 2.3 实现 `NotificationSender` 接口与 `InAppNotificationSender`（写入 notification 集合），验证：单元测试触发后生成未读提醒
+- [x] 2.4 实现去重逻辑（`lastTriggerDirection`），验证：单元测试证明同一方向不重复提醒、穿越回安全区间后再次提醒
+- [x] 2.5 实现 `@Scheduled` 定时判定任务，验证：手动触发后仅对满足条件的启用规则生成提醒
 
 ## 3. 后端接口
 
-- [ ] 3.1 新增监控规则 Controller 端点（新增/修改/删除/查询），验证：Swagger 或 curl 返回 `Result` 正常
-- [ ] 3.2 新增站内提醒 Controller 端点（列表/标记已读），验证：curl 返回列表与已读状态更新正常
+- [x] 3.1 新增监控规则 Controller 端点（新增/修改/删除/查询），验证：Swagger 或 curl 返回 `Result` 正常
+- [x] 3.2 新增站内提醒 Controller 端点（列表/标记已读），验证：curl 返回列表与已读状态更新正常
 
 ## 4. 前端（StockAI-Console）
 
-- [ ] 4.1 持仓列表新增监控设置入口与止盈止损表单，验证：页面可设置并回显规则
-- [ ] 4.2 新增站内提醒展示（未读提示 + 消息列表 + 标记已读），验证：页面展示提醒并可标记已读
+- [x] 4.1 持仓列表新增监控设置入口与止盈止损表单，验证：页面可设置并回显规则
+- [x] 4.2 新增站内提醒展示（未读提示 + 消息列表 + 标记已读），验证：页面展示提醒并可标记已读
 
 ## 5. 联调验证
 
-- [ ] 5.1 后端编译与测试通过，验证：在 StockAI 目录运行 `./mvnw test` 全部通过
-- [ ] 5.2 前后端端到端联调：设置规则 → 模拟收盘价触达 → 前端看到未读提醒，验证：手工端到端流程通过
+- [x] 5.1 后端编译与测试通过，验证：在 StockAI 目录运行 `./mvnw test` 全部通过
+- [x] 5.2 前后端端到端联调：设置规则 → 模拟收盘价触达 → 前端看到未读提醒，验证：手工端到端流程通过
+
+## 6. 飞书推送通道
+
+- [ ] 6.1 新增飞书配置项（`application.yml` 的 `feishu.enabled/webhook-url/secret`），验证：编译通过且配置可注入
+- [ ] 6.2 新增 `FeishuNotificationSender`（`RestClient` 发送 + 可选加签 + 失败吞异常），验证：单元测试覆盖 payload 结构、加签、失败不抛
+- [ ] 6.3 `MonitorService` 改为注入 `List<NotificationSender>` 多渠道循环发送，验证：单元测试证明触达时所有 sender 均被调用
+- [ ] 6.4 补全单元测试（`FeishuNotificationSenderTest` + `MonitorServiceTest` 多通道），验证：在 StockAI 目录运行 `./mvnw test` 全部通过
+- [ ] 6.5 端到端联调：启用飞书 → 触达 → 飞书群收到机器人消息且站内提醒不受影响，验证：手工端到端流程通过
 ```
 
 ## docs/openspec/changes/position-monitoring-alerts/specs/position-monitoring/spec.md
 
 - Source: docs/openspec/changes/position-monitoring-alerts/specs/position-monitoring/spec.md
-- Lines: 1-73
-- SHA256: 4430aeb3dc1f1f953802c4975acfab1aa2b41eee8e0e5278a559eced79c21d3a
+- Lines: 1-87
+- SHA256: d3d9ab417cedeef653340d4e929c07586e3c1709439f4f5e4402eaeed5646d3a
+
+[TRUNCATED]
 
 ```md
 ## Purpose
 
-持仓止盈止损监控能力：允许用户为持仓股设定止盈/止损规则，并在日线收盘价触达阈值时产生站内提醒，帮助用户及时把握止盈与止损时机。
+持仓止盈止损监控能力：允许用户为持仓股设定止盈/止损规则，并在日线收盘价触达阈值时产生站内提醒，可选推送飞书机器人消息，帮助用户及时把握止盈与止损时机。
 
 ## ADDED Requirements
 
@@ -222,4 +233,13 @@ OpenSpec remains the canonical capability spec. This handoff is a deterministic,
 
 - **WHEN** 用户将一条或多条提醒标记为已读
 - **THEN** 系统更新对应提醒的已读状态
+
+### Requirement: 触达后可推送飞书机器人消息
+
+系统 MAY 在飞书推送启用时，将止盈/止损触达提醒同时推送到配置的飞书自定义机器人 webhook；推送 MUST NOT 影响站内提醒的生成。
+
+#### Scenario: 启用飞书推送后触达
+
 ```
+
+Full source: docs/openspec/changes/position-monitoring-alerts/specs/position-monitoring/spec.md

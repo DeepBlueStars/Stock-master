@@ -4,11 +4,11 @@
   "mode": "compact",
   "canonical_spec": "openspec",
   "generated_by": "comet-handoff.sh",
-  "context_hash": "a2b98cfdb91bc10948efaa8d2f34c328a40ddf594cd030876863eef5231edf1b",
+  "context_hash": "5c08e372276ecbe822a515e6a01f0228ded1a83e7d0cca7b1531d23e3ae07049",
   "files": [
-    { "path": "docs/openspec/changes/position-monitoring-alerts/proposal.md", "sha256": "4e9366e2f7dde528bcda7275d2c77228f9a2f21dacdea018a9a47a876c56beb1" },
+    { "path": "docs/openspec/changes/position-monitoring-alerts/proposal.md", "sha256": "a1b9de5e1f004d413a0dbd38f97f438fb9fdde3a6b6868a1ab21c801c0291874" },
     { "path": "docs/openspec/changes/position-monitoring-alerts/design.md", "sha256": "7defffb942a3bfb29c79b9a4f4f6bd8738b8576ca58d88b639f1450c511f2ff4" },
-    { "path": "docs/openspec/changes/position-monitoring-alerts/tasks.md", "sha256": "e1b1ab410f133c50392361035b9e7a60600d47a0467474bfd9520e16e2f83309" },
-    { "path": "docs/openspec/changes/position-monitoring-alerts/specs/position-monitoring/spec.md", "sha256": "4430aeb3dc1f1f953802c4975acfab1aa2b41eee8e0e5278a559eced79c21d3a" }
+    { "path": "docs/openspec/changes/position-monitoring-alerts/tasks.md", "sha256": "6fa15fe5e78c916ea431f38a731eecb0eb5dac1dac14097c5740c458fe4199a0" },
+    { "path": "docs/openspec/changes/position-monitoring-alerts/specs/position-monitoring/spec.md", "sha256": "d3d9ab417cedeef653340d4e929c07586e3c1709439f4f5e4402eaeed5646d3a" }
   ]
 }

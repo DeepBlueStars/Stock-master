@@ -10,7 +10,7 @@
   - 收益率模式：设置相对持仓均价（`avgCostPrice`）的涨跌幅阈值。
 - 新增定时监测任务：基于日线收盘价（`market_quotes` / `etf_daily_quotes` 的 `close`）判定是否触达止盈/止损。
 - 触达后产生站内提醒（消息记录，支持已读/未读）；规则保持启用，可持续监控并重复提醒。
-- 提醒通道预留飞书机器人接入点，本期仅实现站内提醒。
+- 触达后（可选）推送飞书自定义机器人消息：通过全局 webhook 配置启用，推送失败不影响站内提醒。
 
 ## Capabilities
 
@@ -27,6 +27,7 @@
 - 后端 StockAI（Java 21 / Spring Boot 3.5 / MongoDB）：
   - 新增 `position_monitor`（监控规则）与 `notification`（站内提醒）两个集合及对应 PO / Repository。
   - 新增监控 Service、Controller 与基于 `@Scheduled` 的定时判定任务。
+  - 新增 `FeishuNotificationSender`（通知通道实现），通过全局 webhook 配置（`feishu.*`）可选启用，复用 Spring 6 `RestClient` 发送。
 - 前端 StockAI-Console（Vue 3 / Vite / Element Plus）：
   - 持仓列表新增监控设置入口与止盈止损展示。
   - 新增站内提醒展示（未读提示与消息列表）。

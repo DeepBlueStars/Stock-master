@@ -26,3 +26,11 @@
 
 - [x] 5.1 后端编译与测试通过，验证：在 StockAI 目录运行 `./mvnw test` 全部通过
 - [x] 5.2 前后端端到端联调：设置规则 → 模拟收盘价触达 → 前端看到未读提醒，验证：手工端到端流程通过
+
+## 6. 飞书推送通道
+
+- [ ] 6.1 新增飞书配置项（`application.yml` 的 `feishu.enabled/webhook-url/secret`），验证：编译通过且配置可注入
+- [ ] 6.2 新增 `FeishuNotificationSender`（`RestClient` 发送 + 可选加签 + 失败吞异常），验证：单元测试覆盖 payload 结构、加签、失败不抛
+- [ ] 6.3 `MonitorService` 改为注入 `List<NotificationSender>` 多渠道循环发送，验证：单元测试证明触达时所有 sender 均被调用
+- [ ] 6.4 补全单元测试（`FeishuNotificationSenderTest` + `MonitorServiceTest` 多通道），验证：在 StockAI 目录运行 `./mvnw test` 全部通过
+- [ ] 6.5 端到端联调：启用飞书 → 触达 → 飞书群收到机器人消息且站内提醒不受影响，验证：手工端到端流程通过

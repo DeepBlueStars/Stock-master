@@ -23,6 +23,7 @@ canonical_spec: openspec
 | 服务 | `service/MonitorService.java` | 规则 CRUD + 触达判定 |
 | 通知 | `service/notify/NotificationSender.java` | 通知通道抽象 |
 | 通知 | `service/notify/InAppNotificationSender.java` | 站内提醒实现 |
+| 通知 | `service/notify/FeishuNotificationSender.java` | 飞书机器人推送实现 |
 | 定时 | `task/MonitorTask.java` | 每日定时判定 |
 | 接口 | `controller/MonitorController.java` | 规则与提醒端点 |
 
@@ -102,7 +103,32 @@ canonical_spec: openspec
 
 ## 通知通道抽象
 
-`NotificationSender` 定义 `void send(Notification notification)`；`InAppNotificationSender` 写入 `notification` 集合。未来 `FeishuNotificationSender` 实现同一接口，由配置选择启用，不改动判定逻辑。
+`NotificationSender` 定义 `void send(Notification notification)`；`InAppNotificationSender` 写入 `notification` 集合；`FeishuNotificationSender` 推送到飞书自定义机器人 webhook。二者均实现同一接口，由配置选择启用，不改动判定逻辑。
+
+`MonitorService` 改为注入 `List<NotificationSender>`（Spring 收集全部实现 bean），在 `notify()` 中遍历调用每个 sender。飞书 sender 通过 `@ConditionalOnProperty(prefix = "feishu", name = "enabled", havingValue = "true")` 门控：未启用时该 bean 不存在，`List` 中仅剩站内实现。
+
+## 飞书通知通道
+
+### 配置（application.yml）
+
+```yaml
+feishu:
+  enabled: false            # 默认关闭，避免未配置时误发
+  webhook-url: ""           # 飞书自定义机器人 webhook 地址
+  secret: ""                # 可选加签密钥，空 = 不加签
+```
+
+### `FeishuNotificationSender`
+
+- 构造注入 `webhook-url` 与 `secret`（`@Value`）。
+- `send(Notification)` 组装飞书文本消息：`{"msg_type":"text","content":{"text": notification.getContent()}}`。
+- 加签：`secret` 非空时，计算 `timestamp`（秒级）与 `sign = base64(HMAC-SHA256(timestamp + "\n" + secret, key=secret))`，一并放入 payload。
+- 发送：Spring 6 内置 `RestClient` 向 `webhook-url` POST，读取响应 `code`；`code != 0` 记为告警日志。
+- 失败处理：所有异常与飞书非成功码均在 `send()` 内捕获并记日志，不向上抛出，确保不影响站内提醒与去重状态更新。
+
+### 消息内容
+
+复用 `Notification.content` 文本（如「【止盈提醒】贵州茅台(600519) 最新收盘价 1800.00 已触发止盈」），不额外格式化。
 
 ## 边界条件与异常处理
 
@@ -114,12 +140,14 @@ canonical_spec: openspec
 
 ## 测试策略
 
-- 单元测试（`MonitorServiceTest`）：四种判定模式各自命中/未命中；去重状态机全状态迁移。
+- 单元测试（`MonitorServiceTest`）：四种判定模式各自命中/未命中；去重状态机全状态迁移；注入 `List<NotificationSender>` 验证触达时所有 sender 均被调用。
+- 单元测试（`FeishuNotificationSenderTest`）：mock `RestClient`，验证 payload 结构、加签正确、飞书返回非成功码或异常时吞掉不抛。
 - 接口测试：规则 save/list/delete/enable、提醒 list/read。
-- 手动端到端：设置规则 → 构造触达现价 → 触发 `MonitorTask` → 前端看到未读提醒并标记已读。
+- 手动端到端：设置规则 → 构造触达现价 → 触发 `MonitorTask` → 前端看到未读提醒并标记已读，飞书群收到机器人消息。
 
 ## 风险与取舍
 
 - [日线收盘价无法反映盘中极值] → 明确本期为收盘价判定；价格源收敛为独立方法，接入实时行情可替换。
 - [定时任务单实例假设] → 若未来多实例部署，需引入分布式锁；本期单实例，不做。
-- [飞书接入需新增配置与实现] → 通过 `NotificationSender` 接口隔离，不渗入判定逻辑。
+- [飞书推送为全局单 webhook] → 所有用户提醒推送到同一飞书群；若需按用户隔离，后续再加用户级 webhook 配置。本期按全局配置实现。
+- [飞书发送无重试] → 失败仅记日志，可能丢提醒；站内提醒始终保留，可作为兜底，本期不做重试队列。
