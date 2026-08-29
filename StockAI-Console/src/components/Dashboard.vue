@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import * as echarts from 'echarts';
-import { Top, Bottom, Plus, Minus, Delete, TrendCharts, Document, Histogram } from '@element-plus/icons-vue';
+import { Top, Bottom, Plus, Minus, Delete, TrendCharts, Document, Histogram, Bell } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -196,6 +196,19 @@ async function validateSellForm() {
 
 // 股票查询信息
 const stockInfoVisible = ref(false);
+
+// 监控设置弹窗
+const showMonitorModal = ref(false);
+const savingMonitor = ref(false);
+const monitorForm = ref({
+  userId: '6928fca14f206ada1b7a9269',
+  symbol: '',
+  stockName: '',
+  takeProfitType: '',
+  takeProfitValue: null,
+  stopLossType: '',
+  stopLossValue: null
+});
 
 // 计算属性
 const isStockListEmpty = () => stockData.value.length === 0;
@@ -1064,6 +1077,88 @@ function openReport(reportId) {
   }
   window.open(`http://192.168.31.88/reports/view/${reportId}`, '_blank');
 }
+
+// 打开监控设置弹窗（回显该股票已有规则）
+async function openMonitorDialog(row) {
+  monitorForm.value = {
+    userId: '6928fca14f206ada1b7a9269',
+    symbol: row.symbol,
+    stockName: row.stockName,
+    takeProfitType: '',
+    takeProfitValue: null,
+    stopLossType: '',
+    stopLossValue: null
+  };
+  try {
+    const response = await axios.post(`${BASE_URL}/monitor/list`, {
+      userId: monitorForm.value.userId
+    });
+    if (response.data && response.data.state === 0 && Array.isArray(response.data.data)) {
+      const existing = response.data.data.find(r => r.symbol === row.symbol);
+      if (existing) {
+        monitorForm.value.takeProfitType = existing.takeProfitType || '';
+        monitorForm.value.takeProfitValue = existing.takeProfitValue ?? null;
+        monitorForm.value.stopLossType = existing.stopLossType || '';
+        monitorForm.value.stopLossValue = existing.stopLossValue ?? null;
+      }
+    }
+    showMonitorModal.value = true;
+  } catch (error) {
+    ElMessage.error('获取监控规则失败');
+    console.error('获取监控规则失败:', error);
+  }
+}
+
+// 校验并保存监控规则
+async function submitMonitor() {
+  const hasTp = monitorForm.value.takeProfitType && monitorForm.value.takeProfitValue != null;
+  const hasSl = monitorForm.value.stopLossType && monitorForm.value.stopLossValue != null;
+  if (!hasTp && !hasSl) {
+    ElMessage.warning('止盈或止损至少设置一项');
+    return;
+  }
+  savingMonitor.value = true;
+  try {
+    const response = await axios.post(`${BASE_URL}/monitor/save`, {
+      userId: monitorForm.value.userId,
+      symbol: monitorForm.value.symbol,
+      takeProfitType: hasTp ? monitorForm.value.takeProfitType : '',
+      takeProfitValue: hasTp ? monitorForm.value.takeProfitValue : null,
+      stopLossType: hasSl ? monitorForm.value.stopLossType : '',
+      stopLossValue: hasSl ? monitorForm.value.stopLossValue : null
+    });
+    if (response.data && response.data.state === 0) {
+      ElMessage.success('监控规则已保存');
+      showMonitorModal.value = false;
+    } else {
+      ElMessage.error(response.data?.message || '保存监控规则失败');
+    }
+  } catch (error) {
+    ElMessage.error('保存监控规则失败');
+    console.error('保存监控规则失败:', error);
+  } finally {
+    savingMonitor.value = false;
+  }
+}
+
+// 停用/删除监控规则
+async function disableMonitor() {
+  try {
+    const response = await axios.post(`${BASE_URL}/monitor/delete`, {
+      userId: monitorForm.value.userId,
+      symbol: monitorForm.value.symbol
+    });
+    if (response.data && response.data.state === 0) {
+      ElMessage.success('监控规则已删除');
+      showMonitorModal.value = false;
+    } else {
+      ElMessage.error(response.data?.message || '删除失败');
+    }
+  } catch (error) {
+    ElMessage.error('删除失败');
+    console.error('删除监控规则失败:', error);
+  }
+}
 </script>
 
 <template>
@@ -1280,13 +1375,16 @@ function openReport(reportId) {
             <div>{{ scope.row.updatedAt }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140">
+        <el-table-column label="操作" width="200">
           <template #default="scope">
             <el-button type="primary" size="small" @click="openTradeRecords(scope.row.symbol)" title="交易记录">
               <el-icon><Histogram /></el-icon>
             </el-button>
             <el-button type="warning" size="small" @click="openReport(scope.row.reportId)" title="查看报告" :disabled="!scope.row.reportId">
               <el-icon><Document /></el-icon>
+            </el-button>
+            <el-button type="success" size="small" @click="openMonitorDialog(scope.row)" title="止盈止损监控">
+              <el-icon><Bell /></el-icon>
             </el-button>
           </template>
         </el-table-column>
@@ -1623,6 +1721,61 @@ function openReport(reportId) {
       <p>股票投资助手 &copy; 2025 | 数据仅供参考，投资有风险，入市需谨慎</p>
       <p>更新时间: <span id="updateTime">{{ updateTime }}</span></p>
     </footer>
+
+    <!-- 监控设置弹窗 -->
+    <el-dialog
+      v-model="showMonitorModal"
+      title="止盈止损监控设置"
+      width="500px"
+      center
+      destroy-on-close
+    >
+      <div class="monitor-stock-info">
+        <span class="monitor-stock-name">{{ monitorForm.stockName }}（{{ monitorForm.symbol }}）</span>
+      </div>
+      <el-form label-width="110px">
+        <el-form-item label="止盈方式">
+          <el-select v-model="monitorForm.takeProfitType" placeholder="不设置">
+            <el-option label="价格" value="PRICE" />
+            <el-option label="收益率" value="RATE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="monitorForm.takeProfitType" label="止盈阈值">
+          <el-input-number
+            v-model="monitorForm.takeProfitValue"
+            :min="0.0001"
+            :precision="4"
+            :step="0.01"
+            class="w-full"
+          />
+        </el-form-item>
+        <el-form-item label="止损方式">
+          <el-select v-model="monitorForm.stopLossType" placeholder="不设置">
+            <el-option label="价格" value="PRICE" />
+            <el-option label="收益率" value="RATE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="monitorForm.stopLossType" label="止损阈值">
+          <el-input-number
+            v-model="monitorForm.stopLossValue"
+            :precision="4"
+            :step="0.01"
+            class="w-full"
+          />
+        </el-form-item>
+        <el-alert
+          title="收益率型：止盈填正小数（如 0.10 表示 +10%），止损填负小数（如 -0.08 表示 -8%）"
+          type="info"
+          :closable="false"
+          class="mt-2"
+        />
+      </el-form>
+      <template #footer>
+        <el-button type="danger" plain @click="disableMonitor">删除规则</el-button>
+        <el-button @click="showMonitorModal = false">取消</el-button>
+        <el-button type="primary" @click="submitMonitor" :loading="savingMonitor">保存</el-button>
+      </template>
+    </el-dialog>
 </div>
 </template>
 
@@ -2135,5 +2288,16 @@ el-table-column {
 
 .column-right {
   padding-left: 10px;
+}
+
+.monitor-stock-info {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background-color: #f5f7fa;
+  border-radius: 6px;
+}
+.monitor-stock-name {
+  font-weight: 600;
+  color: #1f2937;
 }
 </style>
