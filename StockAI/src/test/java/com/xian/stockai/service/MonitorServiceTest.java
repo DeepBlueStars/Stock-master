@@ -4,6 +4,8 @@ import com.xian.stockai.dao.EtfDailyQuotesRepository;
 import com.xian.stockai.dao.MarketQuotesRepository;
 import com.xian.stockai.dao.PositionMonitorRepository;
 import com.xian.stockai.dao.PositionRepository;
+import com.xian.stockai.po.EtfDailyQuotes;
+import com.xian.stockai.po.MarketQuotes;
 import com.xian.stockai.po.Position;
 import com.xian.stockai.po.PositionMonitor;
 import com.xian.stockai.service.notify.NotificationSender;
@@ -63,6 +65,13 @@ class MonitorServiceTest {
         return p;
     }
 
+    private MarketQuotes stockQuote(String close) {
+        MarketQuotes q = new MarketQuotes();
+        q.setCode(SYMBOL);
+        q.setClose(new BigDecimal(close));
+        return q;
+    }
+
     @Test
     void saveCreatesEnabledRuleWithNoneDirection() {
         MonitorSaveRequest req = new MonitorSaveRequest();
@@ -117,5 +126,100 @@ class MonitorServiceTest {
 
         assertTrue(result.checkSuccess());
         verify(positionMonitorRepository).delete(existing);
+    }
+
+    @Test
+    void priceTakeProfitTriggersWhenCloseAboveTarget() {
+        PositionMonitor rule = priceTpRule();
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("16.00"));
+        when(positionRepository.findByUserIdAndSymbol(USER_ID, SYMBOL)).thenReturn(position(new BigDecimal("10.00")));
+
+        monitorService.checkRule(rule);
+
+        verify(notificationSender).send(any());
+        assertEquals(MonitorService.DIR_TAKE_PROFIT, rule.getLastTriggerDirection());
+        verify(positionMonitorRepository).save(rule);
+    }
+
+    @Test
+    void rateTakeProfitTriggersWhenRateAboveTarget() {
+        PositionMonitor rule = priceTpRule();
+        rule.setTakeProfitType(MonitorService.TYPE_RATE);
+        rule.setTakeProfitValue(new BigDecimal("0.10"));
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("11.00"));
+        when(positionRepository.findByUserIdAndSymbol(USER_ID, SYMBOL)).thenReturn(position(new BigDecimal("10.00")));
+
+        monitorService.checkRule(rule);
+
+        verify(notificationSender).send(any());
+        assertEquals(MonitorService.DIR_TAKE_PROFIT, rule.getLastTriggerDirection());
+    }
+
+    @Test
+    void priceStopLossTriggersWhenCloseBelowTarget() {
+        PositionMonitor rule = priceTpRule();
+        rule.setTakeProfitType(null);
+        rule.setTakeProfitValue(null);
+        rule.setStopLossType(MonitorService.TYPE_PRICE);
+        rule.setStopLossValue(new BigDecimal("9.00"));
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("8.00"));
+        when(positionRepository.findByUserIdAndSymbol(USER_ID, SYMBOL)).thenReturn(position(new BigDecimal("10.00")));
+
+        monitorService.checkRule(rule);
+
+        verify(notificationSender).send(any());
+        assertEquals(MonitorService.DIR_STOP_LOSS, rule.getLastTriggerDirection());
+    }
+
+    @Test
+    void rateStopLossTriggersWhenRateBelowTarget() {
+        PositionMonitor rule = priceTpRule();
+        rule.setTakeProfitType(null);
+        rule.setTakeProfitValue(null);
+        rule.setStopLossType(MonitorService.TYPE_RATE);
+        rule.setStopLossValue(new BigDecimal("-0.08"));
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("9.00"));
+        when(positionRepository.findByUserIdAndSymbol(USER_ID, SYMBOL)).thenReturn(position(new BigDecimal("10.00")));
+
+        monitorService.checkRule(rule);
+
+        verify(notificationSender).send(any());
+        assertEquals(MonitorService.DIR_STOP_LOSS, rule.getLastTriggerDirection());
+    }
+
+    @Test
+    void sameDirectionDoesNotDuplicateAndResetsAfterReturnToSafeZone() {
+        PositionMonitor rule = priceTpRule();
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("16.00"));
+        when(positionRepository.findByUserIdAndSymbol(USER_ID, SYMBOL)).thenReturn(position(new BigDecimal("10.00")));
+
+        monitorService.checkRule(rule);
+        monitorService.checkRule(rule);
+        verify(notificationSender, times(1)).send(any());
+
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("14.00"));
+        monitorService.checkRule(rule);
+        assertEquals(MonitorService.DIR_NONE, rule.getLastTriggerDirection());
+
+        when(marketQuotesRepository.findByCode(SYMBOL)).thenReturn(stockQuote("16.00"));
+        monitorService.checkRule(rule);
+        verify(notificationSender, times(2)).send(any());
+    }
+
+    @Test
+    void etfUsesEtfDailyQuotesPriceSource() {
+        PositionMonitor rule = priceTpRule();
+        rule.setSymbol("510300");
+        rule.setTakeProfitValue(new BigDecimal("4.20"));
+        EtfDailyQuotes etf = new EtfDailyQuotes();
+        etf.setSymbol("510300");
+        etf.setClose(new BigDecimal("4.50"));
+        when(etfDailyQuotesRepository.findTopBySymbolOrderByUpdatedAtDesc("510300")).thenReturn(etf);
+        when(positionRepository.findByUserIdAndSymbol(USER_ID, "510300")).thenReturn(position(new BigDecimal("4.00")));
+
+        monitorService.checkRule(rule);
+
+        verify(notificationSender).send(any());
+        assertEquals(MonitorService.DIR_TAKE_PROFIT, rule.getLastTriggerDirection());
     }
 }
