@@ -45,6 +45,14 @@ class MarketRegimeRepositoriesTest {
     }
 
     @Test
+    void marketRegimeRecordRepositoryDeclaresFindByDate() throws NoSuchMethodException {
+        Method method = MarketRegimeRecordRepository.class.getMethod("findByDate", String.class);
+        assertEquals(MarketRegimeRecord.class, method.getReturnType());
+        assertEquals(1, method.getParameterCount());
+        assertEquals(String.class, method.getParameterTypes()[0]);
+    }
+
+    @Test
     void marketRegimeRecordRepositoryDeclaresFindAllByDateDesc() throws NoSuchMethodException {
         Method method = MarketRegimeRecordRepository.class
                 .getMethod("findAllByOrderByDateDesc", Pageable.class);

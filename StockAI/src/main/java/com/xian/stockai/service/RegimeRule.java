@@ -15,6 +15,9 @@ public final class RegimeRule {
     public static final String ADVICE_DEFENSIVE = "DEFENSIVE";
     public static final String ADVICE_CASH = "CASH";
 
+    /** 量比阈值：近5日均量/60日均量 > 1.0 视为放量。 */
+    private static final BigDecimal VOLUME_RATIO_HIGH = BigDecimal.ONE;
+
     private RegimeRule() {
     }
 
@@ -27,8 +30,10 @@ public final class RegimeRule {
         BigDecimal valuationPct = ind.getPePercentile().max(ind.getPbPercentile());
         boolean highValuation = valuationPct.compareTo(valuationHigh) > 0;
         boolean falling = ind.getLatestClose().compareTo(ind.getMa20()) < 0;
+        boolean heavyVolume = ind.getVolumeRatio() != null
+                && ind.getVolumeRatio().compareTo(VOLUME_RATIO_HIGH) > 0;
 
-        if (highVol && falling && highValuation) {
+        if (highVol && falling && heavyVolume && highValuation) {
             return REGIME_RISK;
         }
         if (bullTrend) {

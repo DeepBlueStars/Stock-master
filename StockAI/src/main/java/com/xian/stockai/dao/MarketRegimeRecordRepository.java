@@ -9,5 +9,7 @@ import java.util.List;
 public interface MarketRegimeRecordRepository extends MongoRepository<MarketRegimeRecord, String> {
     MarketRegimeRecord findTopByOrderByDateDesc();
 
+    MarketRegimeRecord findByDate(String date);
+
     List<MarketRegimeRecord> findAllByOrderByDateDesc(Pageable pageable);
 }

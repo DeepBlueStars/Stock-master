@@ -12,12 +12,15 @@ import com.xian.stockai.vo.Result;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -93,6 +96,17 @@ class MarketRegimeServiceTest {
     }
 
     @Test
+    void calculateIndicatorsReturnsNullWhenBelow250Bars() {
+        List<IndexDailyQuotes> quotes = new ArrayList<>();
+        for (int i = 0; i < 249; i++) {
+            quotes.add(quote(String.valueOf(3000 - i), "1000000"));
+        }
+        when(indexDailyQuotesRepository.findTop250ByIndexCodeOrderByTradeDateDesc("sh000300"))
+                .thenReturn(quotes);
+        assertNull(service.calculateIndicators("sh000300"));
+    }
+
+    @Test
     void evaluateAndSaveWritesRecordAndPushesFeishu() {
         when(indexDailyQuotesRepository.findTop250ByIndexCodeOrderByTradeDateDesc("sh000300"))
                 .thenReturn(trendingQuotes());
@@ -142,5 +156,41 @@ class MarketRegimeServiceTest {
         assertTrue(result.checkSuccess());
         assertTrue(result.getData().getReport().contains("量化结论"));
         verify(marketRegimeRecordRepository).save(any(MarketRegimeRecord.class));
+    }
+
+    @Test
+    void evaluateAndSaveReusesExistingRecordIdOnSameDay() {
+        when(indexDailyQuotesRepository.findTop250ByIndexCodeOrderByTradeDateDesc("sh000300"))
+                .thenReturn(trendingQuotes());
+        when(indexValuationRepository.findTopByIndexCodeOrderByTradeDateDesc("sh000300")).thenReturn(null);
+        when(feishuProvider.getIfAvailable()).thenReturn(null);
+        MarketRegimeRecord existing = new MarketRegimeRecord();
+        existing.setId("existing-id");
+        when(marketRegimeRecordRepository.findByDate(LocalDate.now().toString())).thenReturn(existing);
+
+        Result<MarketRegimeRecord> result = service.evaluateAndSave();
+
+        assertTrue(result.checkSuccess());
+        ArgumentCaptor<MarketRegimeRecord> captor = ArgumentCaptor.forClass(MarketRegimeRecord.class);
+        verify(marketRegimeRecordRepository).save(captor.capture());
+        assertEquals("existing-id", captor.getValue().getId());
+    }
+
+    @Test
+    void historyCapsLimitAt200() {
+        service.history(500);
+        verify(marketRegimeRecordRepository).findAllByOrderByDateDesc(PageRequest.of(0, 200));
+    }
+
+    @Test
+    void historyKeepsLimitWithinCap() {
+        service.history(30);
+        verify(marketRegimeRecordRepository).findAllByOrderByDateDesc(PageRequest.of(0, 30));
+    }
+
+    @Test
+    void historyFloorsLimitToOne() {
+        service.history(0);
+        verify(marketRegimeRecordRepository).findAllByOrderByDateDesc(PageRequest.of(0, 1));
     }
 }

@@ -57,7 +57,20 @@ class RegimeRuleTest {
         ind.setLatestClose(new BigDecimal("3100"));
         ind.setPePercentile(new BigDecimal("0.90"));
         ind.setPbPercentile(new BigDecimal("0.85"));
+        ind.setVolumeRatio(new BigDecimal("1.50"));
         assertEquals(RegimeRule.REGIME_RISK,
+                RegimeRule.determineRegime(ind, VOL_HIGH, VAL_HIGH));
+    }
+
+    @Test
+    void highVolFallingHighValuationWithShrinkingVolumeDoesNotYieldRisk() {
+        RegimeIndicators ind = base();
+        ind.setVolatility(new BigDecimal("0.45"));
+        ind.setLatestClose(new BigDecimal("3100"));
+        ind.setPePercentile(new BigDecimal("0.90"));
+        ind.setPbPercentile(new BigDecimal("0.85"));
+        ind.setVolumeRatio(new BigDecimal("0.50"));
+        assertEquals(RegimeRule.REGIME_SIDEWAYS,
                 RegimeRule.determineRegime(ind, VOL_HIGH, VAL_HIGH));
     }
 

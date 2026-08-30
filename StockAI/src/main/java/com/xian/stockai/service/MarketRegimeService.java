@@ -29,6 +29,9 @@ import java.util.List;
 @Slf4j
 public class MarketRegimeService {
 
+    private static final int MA250_WINDOW = 250;
+    private static final int MAX_HISTORY_LIMIT = 200;
+
     private final IndexDailyQuotesRepository indexDailyQuotesRepository;
     private final IndexValuationRepository indexValuationRepository;
     private final MarketRegimeRecordRepository marketRegimeRecordRepository;
@@ -60,8 +63,8 @@ public class MarketRegimeService {
     public RegimeIndicators calculateIndicators(String indexCode) {
         List<IndexDailyQuotes> recent = indexDailyQuotesRepository
                 .findTop250ByIndexCodeOrderByTradeDateDesc(indexCode);
-        if (recent == null || recent.size() < 20) {
-            log.warn("基准指数 {} 日线不足 20 条，无法判定", indexCode);
+        if (recent == null || recent.size() < MA250_WINDOW) {
+            log.warn("基准指数 {} 日线不足 {} 条，无法判定", indexCode, MA250_WINDOW);
             return null;
         }
         List<IndexDailyQuotes> asc = new ArrayList<>(recent);
@@ -71,7 +74,7 @@ public class MarketRegimeService {
         ind.setBenchmarkIndex(indexCode);
         ind.setMa20(ma(asc, 20));
         ind.setMa60(ma(asc, 60));
-        ind.setMa250(ma(asc, 250));
+        ind.setMa250(ma(asc, MA250_WINDOW));
         ind.setLatestClose(asc.get(asc.size() - 1).getClose());
         ind.setVolumeRatio(volumeRatio(asc));
         ind.setVolatility(volatility(asc));
@@ -126,7 +129,12 @@ public class MarketRegimeService {
         }
 
         MarketRegimeRecord record = new MarketRegimeRecord();
-        record.setDate(LocalDate.now().toString());
+        String date = LocalDate.now().toString();
+        MarketRegimeRecord existing = marketRegimeRecordRepository.findByDate(date);
+        if (existing != null) {
+            record.setId(existing.getId());
+        }
+        record.setDate(date);
         record.setRegime(regime);
         record.setPositionAdvice(advice);
         record.setIndicators(ind);
@@ -160,8 +168,9 @@ public class MarketRegimeService {
     }
 
     public Result<List<MarketRegimeRecord>> history(int limit) {
+        int capped = Math.min(Math.max(1, limit), MAX_HISTORY_LIMIT);
         return Result.success(marketRegimeRecordRepository
-                .findAllByOrderByDateDesc(PageRequest.of(0, Math.max(1, limit))));
+                .findAllByOrderByDateDesc(PageRequest.of(0, capped)));
     }
 
     private BigDecimal ma(List<IndexDailyQuotes> asc, int window) {
