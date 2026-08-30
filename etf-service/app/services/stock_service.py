@@ -59,5 +59,17 @@ class StockService:
         logger.info("个股财务指标采集完成，写入 %s 条", total)
         return total
 
+    def fetch_and_store_industry_concept(self) -> int:
+        """采集优质池个股行业与概念分类写入 stock_industry_concept。"""
+        total = 0
+        for symbol in self._pool():
+            info = fetch_with_fallback(get_source_chain(), "fetch_industry_concept", symbol)
+            if not info:
+                continue
+            if self.mongo.upsert_stock_industry_concept(info):
+                total += 1
+        logger.info("个股行业概念采集完成，写入 %s 条", total)
+        return total
+
 
 stock_service = StockService()

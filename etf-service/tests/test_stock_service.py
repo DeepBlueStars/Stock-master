@@ -70,3 +70,24 @@ def test_fetch_and_store_fundamentals_writes_records():
         n = svc.fetch_and_store_fundamentals()
     assert n == 1
     assert ("600000", "2024-03-31") in svc.mongo.written
+
+
+def _industry_concept(symbol):
+    return {"symbol": symbol, "industry": "银行", "concepts": ["融资融券"],
+            "data_source": "akshare"}
+
+
+class _IcMongo(_FakeMongo):
+    def upsert_stock_industry_concept(self, data):
+        self.written.add(data["symbol"])
+        return True
+
+
+def test_fetch_and_store_industry_concept_writes_records():
+    svc = StockService(mongo=_IcMongo(["600000"]))
+    mod = import_module("app.services.stock_service")
+    with patch.object(mod, "fetch_with_fallback",
+                      side_effect=lambda s, m, c, **kw: _industry_concept(c)):
+        n = svc.fetch_and_store_industry_concept()
+    assert n == 1
+    assert "600000" in svc.mongo.written
