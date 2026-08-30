@@ -1,6 +1,7 @@
 import logging
 
 from ..services.index_service import index_service
+from ..services.stock_service import stock_service
 
 logger = logging.getLogger(__name__)
 
@@ -13,3 +14,23 @@ def update_index_constituents():
         logger.info("指数成分股更新完成，写入 %s 条", n)
     except Exception as e:  # noqa: BLE001
         logger.error("更新指数成分股失败: %s", e, exc_info=True)
+
+
+def update_stock_fundamentals():
+    """财务指标按财报周期更新（检测到新财报则拉取，upsert 去重）。"""
+    logger.info("开始更新个股财务指标")
+    try:
+        n = stock_service.fetch_and_store_fundamentals()
+        logger.info("个股财务指标更新完成，写入 %s 条", n)
+    except Exception as e:  # noqa: BLE001
+        logger.error("更新个股财务指标失败: %s", e, exc_info=True)
+
+
+def update_stock_industry_concept():
+    """个股行业与概念分类每日更新。"""
+    logger.info("开始更新个股行业与概念分类")
+    try:
+        n = stock_service.fetch_and_store_industry_concept()
+        logger.info("个股行业与概念分类更新完成，写入 %s 条", n)
+    except Exception as e:  # noqa: BLE001
+        logger.error("更新个股行业与概念分类失败: %s", e, exc_info=True)
