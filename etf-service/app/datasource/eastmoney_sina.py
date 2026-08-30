@@ -15,12 +15,21 @@ class EastmoneySinaSource(DataSource):
         import akshare as ak
         self.ak = ak
 
+    @staticmethod
+    def _norm_date(value: str) -> str:
+        """把 YYYYMMDD 或 YYYY-MM-DD 归一化为 YYYY-MM-DD。"""
+        s = str(value).replace("-", "").strip()
+        if len(s) >= 8 and s[:8].isdigit():
+            return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+        return str(value)[:10]
+
     def fetch_index_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
-        start = (start_date or "1990-01-01")[:10]
+        start = self._norm_date(start_date or "1990-01-01")
         end = datetime.now().strftime("%Y-%m-%d")
         df = self.ak.stock_zh_index_daily(symbol=to_market_symbol(code))
         if df is None or df.empty:
             return None
+        df["date"] = df["date"].astype(str)
         df = df[(df["date"] >= start) & (df["date"] <= end)]
         now = datetime.now()
         out = []
