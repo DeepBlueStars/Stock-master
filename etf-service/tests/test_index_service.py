@@ -1,3 +1,4 @@
+from importlib import import_module
 from unittest.mock import patch
 import pandas as pd
 
@@ -25,3 +26,26 @@ class _FakeMongo:
     def upsert_index_constituent(self, data):
         self.written.add((data["index_code"], data["symbol"]))
         return True
+
+
+class _IdxMongo(_FakeMongo):
+    def upsert_index_daily_quote(self, data):
+        self.written.add((data["index_code"], data["trade_date"]))
+        return True
+
+
+def test_fetch_index_daily_history_writes_records():
+    svc = IndexService()
+    svc.ak = None
+    svc.mongo = _IdxMongo()
+
+    def fake_fetch(sources, method, code, **kwargs):
+        return [{"symbol": "sh000300", "trade_date": "2024-01-02", "close": 3150.0,
+                 "open": 3100.0, "high": 3160.0, "low": 3090.0, "volume": 1, "amount": 2,
+                 "data_source": "akshare"}]
+
+    mod = import_module("app.services.index_service")
+    with patch.object(mod, "fetch_with_fallback", side_effect=fake_fetch):
+        n = svc.fetch_index_daily_history("sh000300")
+    assert n == 1
+    assert ("sh000300", "2024-01-02") in svc.mongo.written
