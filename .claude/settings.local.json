@@ -1,4 +1,43 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(comet workflow *)",
+      "Bash(comet classic *)",
+      "Bash(comet state *)",
+      "Bash(git status *)",
+      "Bash(comet handoff *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git -C . status --short)",
+      "Bash(git -C . log --oneline -8)",
+      "Bash(java -version)",
+      "Bash(./mvnw -v)",
+      "Bash(mvn -v)",
+      "Bash(mvn -q test-compile)",
+      "Bash(cat .comet/current-change.json)",
+      "Bash(ls -la .comet/)",
+      "Bash(ls -la docs/openspec/changes/position-monitoring-alerts/)",
+      "Bash(mvn -q test -Dtest=FeishuNotificationSenderTest)",
+      "Bash(mvn test *)",
+      "Bash(git commit *)",
+      "Bash(cat .comet/config.yaml)",
+      "Bash(mvn -q test -Dtest=MonitorServiceTest)",
+      "Bash(mvn -q test)",
+      "Bash(npm run *)",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Bash(mongosh --version)",
+      "Bash(python3 -c \"import pymongo; print\\('pymongo', pymongo.version\\)\")",
+      "Bash(python -c \"import pymongo; print\\('pymongo', pymongo.version\\)\")",
+      "Bash(python *)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist)",
+      "Bash(wmic process *)",
+      "Bash(jps -lv)",
+      "Bash(taskkill //F //PID 32760)",
+      "Bash(git *)",
+      "Bash(taskkill //F //PID 10912)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -11,5 +50,6 @@
         ]
       }
     ]
-  }
+  },
+  "defaultPermissionMode": "acceptEdits"
 }
