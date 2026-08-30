@@ -5,7 +5,7 @@
 - [x] 1.3 实现 baostock 备用数据源适配器（历史K线/财务），验证输出统一标准格式数据
 - [x] 1.4 实现 tushare 备用数据源适配器（财务/日线），验证 token 从环境变量读取且输出统一标准格式数据
 - [x] 1.5 实现东方财富/新浪财经备用行情适配器，验证输出统一标准格式数据
-- [ ] 1.6 实现主备数据源自动切换与字段映射清洗，验证主源失败时自动切换备用源且格式统一
+- [x] 1.6 实现主备数据源自动切换与字段映射清洗，验证主源失败时自动切换备用源且格式统一
 - [ ] 1.7 在 etf-service 中新增 MongoDB 集合模型（index_daily_quotes、stock_daily_kline、stock_fundamentals、stock_industry_concept、index_constituents），验证写入与去重方法可用且不改动已有集合
 
 ## 2. 优质池成分股维护
