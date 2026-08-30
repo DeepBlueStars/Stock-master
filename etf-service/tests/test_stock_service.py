@@ -38,3 +38,13 @@ def test_fetch_all_stock_daily_history_iterates_pool():
                       side_effect=lambda s, m, c, **kw: [_quote(c)]):
         n = svc.fetch_all_stock_daily_history()
     assert n == 2
+
+
+def test_update_stock_daily_incremental_only_upserts():
+    svc = StockService(mongo=_FakeMongo(["600000"]))
+    mod = import_module("app.services.stock_service")
+    with patch.object(mod, "fetch_with_fallback",
+                      return_value=[_quote("600000")]):
+        n = svc.update_stock_daily_incremental()
+    assert n == 1
+    assert ("600000", "2024-01-02") in svc.mongo.written

@@ -33,5 +33,18 @@ class StockService:
         logger.info("优质池个股历史K线采集完成，写入 %s 条", total)
         return total
 
+    def update_stock_daily_incremental(self) -> int:
+        """按日增量更新个股K线，仅补缺失交易日（upsert 去重）。"""
+        total = 0
+        for symbol in self._pool():
+            quotes = fetch_with_fallback(get_source_chain(), "fetch_stock_daily", symbol, start_date="20000101")
+            if not quotes:
+                continue
+            for q in quotes:
+                if self.mongo.upsert_stock_daily_kline(q):
+                    total += 1
+        logger.info("个股K线增量更新完成，写入 %s 条", total)
+        return total
+
 
 stock_service = StockService()
