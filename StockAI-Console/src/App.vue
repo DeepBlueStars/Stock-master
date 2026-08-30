@@ -131,6 +131,10 @@ onMounted(fetchNotifications)
             <el-icon><Setting /></el-icon>
             <span>配置</span>
           </el-menu-item>
+          <el-menu-item index="/regime">
+            <el-icon><Setting /></el-icon>
+            <span>温度计</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       

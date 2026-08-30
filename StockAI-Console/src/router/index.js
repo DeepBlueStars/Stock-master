@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AssetConfig from '../components/AssetConfig/AssetConfig.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Config from '../components/Config.vue'
+import MarketRegime from '../components/MarketRegime.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,6 +21,11 @@ const router = createRouter({
       path: '/config',
       name: '配置',
       component: Config
+    },
+    {
+      path: '/regime',
+      name: '温度计',
+      component: MarketRegime
     }
   ]
 })
