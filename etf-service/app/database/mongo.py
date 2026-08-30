@@ -27,6 +27,7 @@ class MongoDBClient:
         self.stock_fundamentals: Collection = self.db["stock_fundamentals"]
         self.stock_industry_concept: Collection = self.db["stock_industry_concept"]
         self.index_constituents: Collection = self.db["index_constituents"]
+        self.index_valuation: Collection = self.db["index_valuation"]
     
     def get_etf_basic_info(self) -> list:
         """获取所有ETF基本信息"""
@@ -148,6 +149,19 @@ class MongoDBClient:
             return True
         except Exception as e:
             print(f"更新指数成分股失败: {e}")
+            return False
+
+    def upsert_index_valuation(self, data: Dict[str, Any]) -> bool:
+        """更新或插入指数估值（去重键 index_code + trade_date）。"""
+        try:
+            self.index_valuation.update_one(
+                {"index_code": data["index_code"], "trade_date": data["trade_date"]},
+                {"$set": data},
+                upsert=True,
+            )
+            return True
+        except Exception as e:
+            print(f"更新指数估值失败: {e}")
             return False
 
     def get_constituent_symbols(self) -> list:

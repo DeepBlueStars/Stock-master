@@ -96,3 +96,29 @@ def to_market_symbol(code: str) -> str:
     if code.startswith("6"):
         return "sh" + code
     return "sz" + code
+
+
+@dataclass
+class IndexValuation:
+    index_code: str
+    trade_date: str
+    pe: float
+    pb: float
+    pe_percentile: float
+    pb_percentile: float
+    data_source: str
+    updated_at: datetime = field(default_factory=datetime.now)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def compute_percentile(history: List[float], value: float) -> float:
+    """value 在 history 中的历史分位（0.0~1.0，= 严格小于 value 的数量 / 总数）。"""
+    if not history:
+        return 0.0
+    valid = [v for v in history if v is not None]
+    if not valid:
+        return 0.0
+    less = sum(1 for v in valid if v < value)
+    return round(less / len(valid), 4)

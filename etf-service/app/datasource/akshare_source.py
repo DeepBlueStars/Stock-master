@@ -132,6 +132,34 @@ class AkshareSource(DataSource):
             updated_at=self._now(),
         ).to_dict()
 
+    def fetch_index_valuation_history(self, index_name: str, indicator: str) -> Optional[List[dict]]:
+        """拉取指数 PE/PB 历史序列（乐咕乐股），indicator 为 'pe' 或 'pb'。
+
+        返回 [{trade_date, pe|pb}]。接口列名随 akshare 版本可能变化，
+        使用 row_get 候选列名做防御映射；接口不可用时备选
+        ak.index_value_hist_funddb(symbol=index_name, indicator='市盈率'|'市净率')。
+        """
+        try:
+            if indicator == "pe":
+                df = self.ak.stock_index_pe_lg(symbol=index_name)
+                col_candidates = ("市盈率", "平均市盈率", "滚动市盈率", "pe")
+            else:
+                df = self.ak.stock_index_pb_lg(symbol=index_name)
+                col_candidates = ("市净率", "平均市净率", "pb")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("指数 %s %s 估值获取失败: %s", index_name, indicator, e)
+            return None
+        if df is None or df.empty:
+            return None
+        out = []
+        for _, r in df.iterrows():
+            date = to_date(row_get(r, "日期", "date", "trade_date"))
+            value = to_float(row_get(r, *col_candidates))
+            if not date:
+                continue
+            out.append({"trade_date": date, indicator: value})
+        return out
+
     def _get_concepts(self, code: str) -> List[str]:
         global _concept_map_cache
         if _concept_map_cache is None:
