@@ -48,6 +48,21 @@ class IndexService:
             total += self.fetch_index_daily_history(code)
         return total
 
+    def update_index_daily(self) -> int:
+        """按日增量更新指数行情，upsert 去重保证同一指数同一交易日仅一条。"""
+        total = 0
+        for code in self.INDEX_CODES:
+            quotes = fetch_with_fallback(get_source_chain(), "fetch_index_daily", code, start_date="20000101")
+            if not quotes:
+                continue
+            for q in quotes:
+                record = dict(q)
+                record["index_code"] = record.pop("symbol")
+                if self.mongo.upsert_index_daily_quote(record):
+                    total += 1
+        logger.info("指数日线增量更新完成，写入 %s 条", total)
+        return total
+
     def fetch_and_store_constituents(self) -> int:
         """拉取沪深300/中证500成分股并写入 index_constituents，返回写入条数。"""
         count = 0

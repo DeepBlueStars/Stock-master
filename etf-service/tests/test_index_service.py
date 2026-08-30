@@ -49,3 +49,21 @@ def test_fetch_index_daily_history_writes_records():
         n = svc.fetch_index_daily_history("sh000300")
     assert n == 1
     assert ("sh000300", "2024-01-02") in svc.mongo.written
+
+
+def test_update_index_daily_writes_and_dedups():
+    svc = IndexService()
+    svc.ak = None
+    svc.mongo = _IdxMongo()
+
+    def fake_fetch(sources, method, code, **kwargs):
+        return [{"symbol": code, "trade_date": "2024-01-02", "close": 1.0,
+                 "open": 1.0, "high": 1.0, "low": 1.0, "volume": 1, "amount": 1,
+                 "data_source": "akshare"}]
+
+    mod = import_module("app.services.index_service")
+    with patch.object(mod, "fetch_with_fallback", side_effect=fake_fetch):
+        n = svc.update_index_daily()
+    assert n == len(IndexService.INDEX_CODES)
+    # 同一指数同一交易日只写入一次（upsert 去重）
+    assert len(svc.mongo.written) == n
