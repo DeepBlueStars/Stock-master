@@ -242,7 +242,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 3: 编写数据源抽象接口与主备链**
+- [x] **Step 3: 编写数据源抽象接口与主备链**
 
 创建 `etf-service/app/datasource/base.py`：
 
@@ -296,7 +296,7 @@ from .base import DataSource, fetch_with_fallback
 __all__ = ["DataSource", "fetch_with_fallback"]
 ```
 
-- [ ] **Step 4: 编写失败测试**
+- [x] **Step 4: 编写失败测试**
 
 创建 `etf-service/tests/__init__.py`（空文件）。
 
@@ -343,12 +343,12 @@ def test_to_market_symbol():
     assert to_market_symbol("sh600000") == "sh600000"
 ```
 
-- [ ] **Step 5: 运行测试验证通过**
+- [x] **Step 5: 运行测试验证通过**
 
 Run: `cd etf-service; python -m pytest tests/test_schema.py -v`
 Expected: 4 passed
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add etf-service/requirements.txt etf-service/app/normalize etf-service/app/datasource etf-service/tests
@@ -367,7 +367,7 @@ git commit -m "feat: 新增数据源抽象接口与统一标准格式模型"
 - Consumes: `schema.DailyQuote/Fundamental/IndustryConcept/to_float/to_date/row_get`、`base.DataSource`
 - Produces: `AkshareSource`（`name = "akshare"`，实现 `fetch_index_daily` / `fetch_stock_daily` / `fetch_fundamentals` / `fetch_industry_concept`，全部返回标准格式 dict / `List[dict]` 或 `None`）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_akshare_source.py`：
 
@@ -435,12 +435,12 @@ def test_fetch_fundamentals_maps_standard_format():
     assert f["roe"] == 8.0 and f["gross_margin"] == 30.0
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_akshare_source.py -v`
 Expected: FAIL（`ModuleNotFoundError: app.datasource.akshare_source`）
 
-- [ ] **Step 3: 实现适配器**
+- [x] **Step 3: 实现适配器**
 
 创建 `etf-service/app/datasource/akshare_source.py`：
 
@@ -598,12 +598,12 @@ class AkshareSource(DataSource):
         return mapping
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_akshare_source.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/datasource/akshare_source.py etf-service/tests/test_akshare_source.py
@@ -622,7 +622,7 @@ git commit -m "feat: 实现 akshare 主数据源适配器"
 - Consumes: `schema.*`、`base.DataSource`
 - Produces: `BaostockSource`（`name = "baostock"`，实现 `fetch_index_daily` / `fetch_stock_daily` / `fetch_fundamentals`；`fetch_industry_concept` 返回 `None`）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_baostock_source.py`：
 
@@ -684,12 +684,12 @@ def test_fetch_fundamentals_maps_standard_format():
     assert f["profit_yoy"] == 15.0
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_baostock_source.py -v`
 Expected: FAIL（`ModuleNotFoundError`）
 
-- [ ] **Step 3: 实现适配器**
+- [x] **Step 3: 实现适配器**
 
 创建 `etf-service/app/datasource/baostock_source.py`：
 
@@ -803,12 +803,12 @@ class BaostockSource(DataSource):
         ).to_dict()]
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_baostock_source.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/datasource/baostock_source.py etf-service/tests/test_baostock_source.py
@@ -827,7 +827,7 @@ git commit -m "feat: 实现 baostock 备用数据源适配器"
 - Consumes: `schema.*`、`base.DataSource`
 - Produces: `TushareSource`（`name = "tushare"`；构造时用 `os.getenv("TUSHARE_TOKEN", "")` 读 token，空则所有方法返回 `None`；实现 `fetch_index_daily` / `fetch_stock_daily` / `fetch_fundamentals`）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_tushare_source.py`：
 
@@ -877,12 +877,12 @@ def test_fetch_stock_daily_maps_standard_format(monkeypatch):
     assert q["data_source"] == "tushare"
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_tushare_source.py -v`
 Expected: FAIL（`ModuleNotFoundError`）
 
-- [ ] **Step 3: 实现适配器**
+- [x] **Step 3: 实现适配器**
 
 创建 `etf-service/app/datasource/tushare_source.py`：
 
@@ -998,12 +998,12 @@ class TushareSource(DataSource):
         return out
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_tushare_source.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/datasource/tushare_source.py etf-service/tests/test_tushare_source.py
@@ -1022,7 +1022,7 @@ git commit -m "feat: 实现 tushare 备用数据源适配器（token 从环境�
 - Consumes: `schema.*`、`base.DataSource`
 - Produces: `EastmoneySinaSource`（`name = "eastmoney_sina"`，实现 `fetch_index_daily` / `fetch_stock_daily`；`fetch_fundamentals` / `fetch_industry_concept` 返回 `None`）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_eastmoney_sina.py`：
 
@@ -1060,12 +1060,12 @@ def test_fetch_index_daily_no_amount_defaults_zero():
     assert q["close"] == 3150.0
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_eastmoney_sina.py -v`
 Expected: FAIL（`ModuleNotFoundError`）
 
-- [ ] **Step 3: 实现适配器**
+- [x] **Step 3: 实现适配器**
 
 创建 `etf-service/app/datasource/eastmoney_sina.py`：
 
@@ -1137,12 +1137,12 @@ class EastmoneySinaSource(DataSource):
         return out
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_eastmoney_sina.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/datasource/eastmoney_sina.py etf-service/tests/test_eastmoney_sina.py
@@ -1161,7 +1161,7 @@ git commit -m "feat: 实现东方财富/新浪备用行情适配器"
 - Consumes: `AkshareSource` / `BaostockSource` / `TushareSource` / `EastmoneySinaSource`、`base.fetch_with_fallback`
 - Produces: `get_source_chain() -> List[DataSource]`（顺序固定 `akshare → baostock → tushare → eastmoney_sina`）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_fallback.py`：
 
@@ -1198,12 +1198,12 @@ def test_fallback_returns_none_when_all_fail():
     assert out is None
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_fallback.py -v`
 Expected: FAIL（`ImportError: cannot import name 'get_source_chain'`）
 
-- [ ] **Step 3: 实现主备链**
+- [x] **Step 3: 实现主备链**
 
 覆盖 `etf-service/app/datasource/__init__.py`：
 
@@ -1225,12 +1225,12 @@ def get_source_chain() -> List[DataSource]:
 __all__ = ["DataSource", "fetch_with_fallback", "get_source_chain"]
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_fallback.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/datasource/__init__.py etf-service/tests/test_fallback.py
@@ -1256,7 +1256,7 @@ git commit -m "feat: 实现主备数据源自动切换链"
   - `upsert_index_constituent(data) -> bool`（去重键 `index_code + symbol`）
   - `get_constituent_symbols() -> list`（`index_constituents.distinct("symbol")`）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_mongo_upsert.py`：
 
@@ -1297,12 +1297,12 @@ def test_upsert_stock_daily_kline_uses_dedup_key():
         {"symbol": "000001", "trade_date": "2024-01-02"}, {"$set": data}, upsert=True)
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_mongo_upsert.py -v`
 Expected: FAIL（`AttributeError: 'MongoDBClient' object has no attribute 'index_daily_quotes'`）
 
-- [ ] **Step 3: 实现新集合**
+- [x] **Step 3: 实现新集合**
 
 编辑 `etf-service/app/database/mongo.py`，在 `__init__` 的集合引用处追加（不改动已有两行）：
 
@@ -1391,12 +1391,12 @@ Expected: FAIL（`AttributeError: 'MongoDBClient' object has no attribute 'index
         return list(self.index_constituents.distinct("symbol"))
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_mongo_upsert.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/database/mongo.py etf-service/tests/test_mongo_upsert.py
@@ -1419,7 +1419,7 @@ git commit -m "feat: 新增数据地基 MongoDB 集合模型与去重写入"
   - `IndexService.fetch_and_store_constituents() -> int`（返回写入条数）
   - `IndexService`（后续任务扩展指数行情方法）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_index_service.py`：
 
@@ -1453,12 +1453,12 @@ class _FakeMongo:
         return True
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_index_service.py -v`
 Expected: FAIL（`ModuleNotFoundError: app.services.index_service`）
 
-- [ ] **Step 3: 实现成分股服务**
+- [x] **Step 3: 实现成分股服务**
 
 创建 `etf-service/app/services/index_service.py`：
 
@@ -1522,12 +1522,12 @@ from .index_service import index_service, IndexService
 __all__ = ["etf_service", "index_service", "IndexService"]
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_index_service.py -v`
 Expected: 1 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/services/index_service.py etf-service/app/services/__init__.py etf-service/tests/test_index_service.py
@@ -1547,7 +1547,7 @@ git commit -m "feat: 实现沪深300/中证500成分股拉取与存储"
 - Consumes: `index_service.fetch_and_store_constituents`、`etf_task` 现有任务模式
 - Produces: `data_tasks.update_index_constituents()`（幂等，重复运行不重复写入，靠 upsert 去重）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_data_tasks.py`：
 
@@ -1564,12 +1564,12 @@ def test_update_index_constituents_calls_service():
         svc.fetch_and_store_constituents.assert_called_once()
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_data_tasks.py -v`
 Expected: FAIL（`ModuleNotFoundError: app.tasks.data_tasks`）
 
-- [ ] **Step 3: 实现任务函数**
+- [x] **Step 3: 实现任务函数**
 
 创建 `etf-service/app/tasks/data_tasks.py`：
 
@@ -1600,12 +1600,12 @@ from .data_tasks import update_index_constituents
 __all__ = ["start_scheduler", "stop_scheduler", "update_index_constituents"]
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_data_tasks.py -v`
 Expected: 1 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/tasks/data_tasks.py etf-service/app/tasks/__init__.py etf-service/tests/test_data_tasks.py
@@ -1627,7 +1627,7 @@ git commit -m "feat: 新增成分股列表定时更新任务"
   - `IndexService.fetch_index_daily_history(code, start_date="19900101") -> int`（写入条数）
   - `IndexService.fetch_all_index_daily_history() -> int`
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `etf-service/tests/test_index_service.py` 末尾追加：
 
@@ -1656,12 +1656,12 @@ def test_fetch_index_daily_history_writes_records():
 
 （`_IdxMongo` 同时供 Task 11 的增量更新测试使用。）
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_index_service.py -v`
 Expected: FAIL（`AttributeError: 'IndexService' object has no attribute 'fetch_index_daily_history'`）
 
-- [ ] **Step 3: 实现指数历史采集**
+- [x] **Step 3: 实现指数历史采集**
 
 在 `etf-service/app/services/index_service.py` 顶部导入区追加：
 
@@ -1703,12 +1703,12 @@ from ..normalize.schema import to_date
         return total
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_index_service.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/services/index_service.py etf-service/tests/test_index_service.py
@@ -1727,7 +1727,7 @@ git commit -m "feat: 实现主要宽基指数历史日线采集"
 - Consumes: `fetch_with_fallback`、`upsert_index_daily_quote`、`INDEX_CODES`
 - Produces: `IndexService.update_index_daily() -> int`（增量，靠 upsert 去重保证同一指数同一交易日仅一条）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `etf-service/tests/test_index_service.py` 末尾追加：
 
@@ -1749,12 +1749,12 @@ def test_update_index_daily_writes_and_dedups():
     assert len(svc.mongo.written) == n
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_index_service.py -v`
 Expected: FAIL（`AttributeError: 'IndexService' object has no attribute 'update_index_daily'`）
 
-- [ ] **Step 3: 实现按日更新**
+- [x] **Step 3: 实现按日更新**
 
 在 `etf-service/app/services/index_service.py` 的 `IndexService` 类中，`fetch_all_index_daily_history` 之后追加：
 
@@ -1775,12 +1775,12 @@ Expected: FAIL（`AttributeError: 'IndexService' object has no attribute 'update
         return total
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_index_service.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/services/index_service.py etf-service/tests/test_index_service.py
@@ -1802,7 +1802,7 @@ git commit -m "feat: 实现指数行情按日更新与去重"
   - `StockService.fetch_stock_daily_history(symbol, start_date="19900101") -> int`
   - `StockService.fetch_all_stock_daily_history() -> int`
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `etf-service/tests/test_stock_service.py`：
 
@@ -1846,12 +1846,12 @@ def test_fetch_all_stock_daily_history_iterates_pool():
     assert n == 2
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_stock_service.py -v`
 Expected: FAIL（`ModuleNotFoundError: app.services.stock_service`）
 
-- [ ] **Step 3: 实现个股K线采集**
+- [x] **Step 3: 实现个股K线采集**
 
 创建 `etf-service/app/services/stock_service.py`：
 
@@ -1903,12 +1903,12 @@ from .stock_service import stock_service, StockService
 __all__ = ["etf_service", "index_service", "IndexService", "stock_service", "StockService"]
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_stock_service.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/services/stock_service.py etf-service/app/services/__init__.py etf-service/tests/test_stock_service.py
@@ -1927,7 +1927,7 @@ git commit -m "feat: 实现优质池个股历史K线采集"
 - Consumes: `fetch_stock_daily` 链、`upsert_stock_daily_kline`
 - Produces: `StockService.update_stock_daily_incremental() -> int`（仅补缺失交易日，靠 upsert 去重）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `etf-service/tests/test_stock_service.py` 末尾追加：
 
@@ -1941,12 +1941,12 @@ def test_update_stock_daily_incremental_only_upserts():
     assert ("600000", "2024-01-02") in svc.mongo.written
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_stock_service.py -v`
 Expected: FAIL（`AttributeError: 'StockService' object has no attribute 'update_stock_daily_incremental'`）
 
-- [ ] **Step 3: 实现增量更新**
+- [x] **Step 3: 实现增量更新**
 
 在 `etf-service/app/services/stock_service.py` 的 `StockService` 类中，`fetch_all_stock_daily_history` 之后追加：
 
@@ -1965,12 +1965,12 @@ Expected: FAIL（`AttributeError: 'StockService' object has no attribute 'update
         return total
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_stock_service.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/services/stock_service.py etf-service/tests/test_stock_service.py
@@ -1989,7 +1989,7 @@ git commit -m "feat: 实现个股K线按日增量更新与去重"
 - Consumes: `fetch_with_fallback`（method `fetch_fundamentals`）、`upsert_stock_fundamental`
 - Produces: `StockService.fetch_and_store_fundamentals() -> int`
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `etf-service/tests/test_stock_service.py` 末尾追加：
 
@@ -2015,12 +2015,12 @@ def test_fetch_and_store_fundamentals_writes_records():
     assert ("600000", "2024-03-31") in svc.mongo.written
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_stock_service.py -v`
 Expected: FAIL（`AttributeError: 'StockService' object has no attribute 'fetch_and_store_fundamentals'`）
 
-- [ ] **Step 3: 实现财务指标采集**
+- [x] **Step 3: 实现财务指标采集**
 
 在 `etf-service/app/services/stock_service.py` 的 `StockService` 类中追加：
 
@@ -2039,12 +2039,12 @@ Expected: FAIL（`AttributeError: 'StockService' object has no attribute 'fetch_
         return total
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_stock_service.py -v`
 Expected: 4 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/services/stock_service.py etf-service/tests/test_stock_service.py
@@ -2063,7 +2063,7 @@ git commit -m "feat: 实现优质池个股财务指标采集"
 - Consumes: `fetch_with_fallback`（method `fetch_industry_concept`）、`upsert_stock_industry_concept`
 - Produces: `StockService.fetch_and_store_industry_concept() -> int`
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `etf-service/tests/test_stock_service.py` 末尾追加：
 
@@ -2088,12 +2088,12 @@ def test_fetch_and_store_industry_concept_writes_records():
     assert "600000" in svc.mongo.written
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_stock_service.py -v`
 Expected: FAIL（`AttributeError: 'StockService' object has no attribute 'fetch_and_store_industry_concept'`）
 
-- [ ] **Step 3: 实现行业概念采集**
+- [x] **Step 3: 实现行业概念采集**
 
 在 `etf-service/app/services/stock_service.py` 的 `StockService` 类中追加：
 
@@ -2111,12 +2111,12 @@ Expected: FAIL（`AttributeError: 'StockService' object has no attribute 'fetch_
         return total
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_stock_service.py -v`
 Expected: 5 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/services/stock_service.py etf-service/tests/test_stock_service.py
@@ -2137,7 +2137,7 @@ git commit -m "feat: 实现个股行业与概念分类采集"
   - `data_tasks.update_stock_fundamentals()`（财报季触发，检测到新财报则拉取）
   - `data_tasks.update_stock_industry_concept()`（每日更新）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `etf-service/tests/test_data_tasks.py` 末尾追加：
 
@@ -2152,12 +2152,12 @@ def test_update_stock_fundamentals_and_industry_concept():
         svc.fetch_and_store_industry_concept.assert_called_once()
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_data_tasks.py -v`
 Expected: FAIL（`AttributeError`）
 
-- [ ] **Step 3: 实现定期更新任务**
+- [x] **Step 3: 实现定期更新任务**
 
 在 `etf-service/app/tasks/data_tasks.py` 顶部导入区追加：
 
@@ -2206,12 +2206,12 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_data_tasks.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/tasks/data_tasks.py etf-service/app/tasks/__init__.py etf-service/tests/test_data_tasks.py
@@ -2230,7 +2230,7 @@ git commit -m "feat: 实现财务与分类数据定期更新任务"
 - Consumes: `fetch_with_fallback`
 - Produces: `fetch_with_fallback(sources, method, code, retries=2, retry_delay=1, **kwargs)`（每源失败重试 `retries` 次、间隔 `retry_delay` 秒；全部失败记 error 日志、保留旧数据、返回 `None` 不抛异常）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `etf-service/tests/test_fallback.py` 末尾追加：
 
@@ -2250,12 +2250,12 @@ def test_fallback_does_not_raise_on_total_failure():
 
 （顶部需补 `from unittest.mock import patch` 导入。）
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_fallback.py -v`
 Expected: FAIL（`fetch_with_fallback() got an unexpected keyword argument 'retries'`）
 
-- [ ] **Step 3: 实现重试与降级**
+- [x] **Step 3: 实现重试与降级**
 
 编辑 `etf-service/app/datasource/base.py`，在顶部导入区追加 `import time`，并覆盖 `fetch_with_fallback`：
 
@@ -2308,12 +2308,12 @@ def fetch_with_fallback(sources: List[DataSource], method: str, code: str,
     return None
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_fallback.py -v`
 Expected: 5 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add etf-service/app/datasource/base.py etf-service/tests/test_fallback.py
@@ -2332,7 +2332,7 @@ git commit -m "feat: 为各采集任务增加失败重试与降级逻辑"
 - Consumes: `data_tasks` 各任务函数、`BackgroundScheduler` / `IntervalTrigger` / `CronTrigger`
 - Produces: `start_scheduler()` 注册新任务并保留原有 ETF 任务，不破坏现有 `update_etf_daily_quotes` / `update_etf_basic_info`
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `etf-service/tests/test_data_tasks.py` 末尾追加：
 
@@ -2365,12 +2365,12 @@ def test_start_scheduler_registers_data_jobs(monkeypatch):
     assert "update_stock_industry_concept" in jobs
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd etf-service; python -m pytest tests/test_data_tasks.py -v`
 Expected: FAIL（`AssertionError: 'update_index_daily' not in jobs`）
 
-- [ ] **Step 3: 接入调度**
+- [x] **Step 3: 接入调度**
 
 编辑 `etf-service/app/tasks/etf_task.py`，在顶部导入区追加：
 
@@ -2433,17 +2433,17 @@ from ..services.stock_service import stock_service
             update_stock_industry_concept()
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd etf-service; python -m pytest tests/test_data_tasks.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: 运行全量测试**
+- [x] **Step 5: 运行全量测试**
 
 Run: `cd etf-service; python -m pytest tests/ -v`
 Expected: 全部通过（无失败）
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add etf-service/app/tasks/etf_task.py etf-service/tests/test_data_tasks.py
