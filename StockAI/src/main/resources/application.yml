@@ -6,16 +6,17 @@ spring:
     name: StockAI
   ai:
     openai:
-#      api-key: sk-fbad694281a4480488760a1cd09b83d7
-#      base-url: https://api.deepseek.com
-#      chat:
-#        options:
-#          model: deepseek-chat
-      api-key: sk-80afdd9c8d07429f98af10e778604da8
-      base-url: https://dashscope.aliyuncs.com/compatible-mode
-      chat:
-        options:
-          model: qwen-max
+     api-key: sk-fbad694281a4480488760a1cd09b83d7
+     base-url: https://api.deepseek.com
+     chat:
+       options:
+        #  model: deepseek-v4-pro
+         model: deepseek-v4-flash
+      # api-key: sk-80afdd9c8d07429f98af10e778604da8
+      # base-url: https://dashscope.aliyuncs.com/compatible-mode
+      # chat:
+      #   options:
+      #     model: qwen-max
   # MongoDB
   data:
     mongodb:
@@ -38,3 +39,11 @@ feishu:
   enabled: false
   webhook-url: ""
   secret: ""
+
+# 市场温度计：收盘后判定定时任务与量化阈值
+market-regime:
+  cron: "0 30 15 * * ?"
+  benchmark-index: "sh000300"
+  thresholds:
+    volatility-high: 0.30
+    valuation-high: 0.80
