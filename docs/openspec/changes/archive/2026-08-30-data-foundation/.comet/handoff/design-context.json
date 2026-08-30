@@ -1,0 +1,17 @@
+{
+  "change": "data-foundation",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "643064530631bcac1694ea85d9c13b809b034030ddc9e61abb01a44542dcdf49",
+  "files": [
+    { "path": "docs/openspec/changes/data-foundation/proposal.md", "sha256": "ff864672d855c6fff6533408c1f7d6104ad95efeaee0caa378290fe1a9cec369" },
+    { "path": "docs/openspec/changes/data-foundation/design.md", "sha256": "8a29ac79fdf09d9365b672781d0ea8dc96cfdb74f37ac8bb777371a6bb12ddac" },
+    { "path": "docs/openspec/changes/data-foundation/tasks.md", "sha256": "066afe694887b1498e0b30d1b6fc7775687c0c31dbe4c2549b8fac30761896f9" },
+    { "path": "docs/openspec/changes/data-foundation/specs/data-ingestion/spec.md", "sha256": "2aee36187a7eb864095199eb6b811f20f3171cba01e4728bcbce3100c17126a1" },
+    { "path": "docs/openspec/changes/data-foundation/specs/index-history-data/spec.md", "sha256": "cbc9b043200f6bb2cbbc7553be2d2388a2950c0648c477d51a57edcba1616476" },
+    { "path": "docs/openspec/changes/data-foundation/specs/stock-fundamental-data/spec.md", "sha256": "be697856bfd8e64c89289e9eeaa91664a794fff1402d260acc1a0951cf0594e0" },
+    { "path": "docs/openspec/changes/data-foundation/specs/stock-history-data/spec.md", "sha256": "8b8d3c6b0cf3cafab114e25ad51e5e5ad958965e2867497b0d259d6c71bc95b1" }
+  ]
+}

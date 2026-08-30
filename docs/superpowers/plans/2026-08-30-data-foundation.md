@@ -2,6 +2,7 @@
 change: data-foundation
 design-doc: docs/superpowers/specs/2026-08-30-data-foundation-design.md
 base-ref: 7c7562d90e81558d8da736f79a64bd02acc56816
+archived-with: 2026-08-30-data-foundation
 ---
 
 # data-foundation 数据地基 实施计划
