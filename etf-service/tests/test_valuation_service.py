@@ -42,3 +42,11 @@ def test_fetch_index_valuation_writes_and_computes_percentile():
     assert by_date["2024-01-04"]["pe_percentile"] == round(1 / 3, 4)
     assert by_date["2024-01-04"]["pb_percentile"] == round(1 / 3, 4)
     assert by_date["2024-01-02"]["index_code"] == "sh000300"
+
+
+def test_default_ak_is_akshare_source():
+    from app.datasource.akshare_source import AkshareSource
+
+    svc = ValuationService()
+    assert isinstance(svc.ak, AkshareSource)
+    assert hasattr(svc.ak, "fetch_index_valuation_history")

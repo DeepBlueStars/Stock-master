@@ -18,7 +18,7 @@ class ValuationService:
     }
 
     def __init__(self, ak=None, mongo=None):
-        self.ak = ak or AkshareSource().ak
+        self.ak = ak or AkshareSource()
         self.mongo = mongo or mongo_client
 
     def fetch_index_valuation(self, index_code: str) -> int:
