@@ -7,6 +7,8 @@ import config from '../config/config'
 const BASE_URL = config.baseUrl
 const loading = ref(false)
 const record = ref(null)
+const history = ref([])
+const historyLoading = ref(false)
 
 const REGIME_LABEL = {
   BULL: { text: '牛', color: '#ef4444', advice: '激进（高仓位）' },
@@ -38,7 +40,31 @@ async function fetchLatest() {
   }
 }
 
-onMounted(fetchLatest)
+async function fetchHistory() {
+  historyLoading.value = true
+  try {
+    const response = await axios.post(`${BASE_URL}/market-regime/history?limit=30`)
+    if (response.data && response.data.state === 0 && Array.isArray(response.data.data)) {
+      history.value = response.data.data
+    } else {
+      history.value = []
+    }
+  } catch (error) {
+    console.error('获取历史状态失败:', error)
+    history.value = []
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+function regimeText(regime) {
+  return (REGIME_LABEL[regime] || { text: regime }).text
+}
+
+onMounted(() => {
+  fetchLatest()
+  fetchHistory()
+})
 </script>
 
 <template>
@@ -69,6 +95,19 @@ onMounted(fetchLatest)
         </div>
       </template>
       <el-empty v-else description="暂无市场状态记录" />
+    </el-card>
+    <el-card shadow="hover" class="history-card" v-loading="historyLoading">
+      <template #header>
+        <h2 class="regime-title">历史记录</h2>
+      </template>
+      <el-table :data="history" stripe>
+        <el-table-column prop="date" label="日期" />
+        <el-table-column label="状态">
+          <template #default="scope">{{ regimeText(scope.row.regime) }}</template>
+        </el-table-column>
+        <el-table-column prop="positionAdvice" label="仓位建议" />
+        <el-table-column prop="report" label="报告" show-overflow-tooltip />
+      </el-table>
     </el-card>
   </div>
 </template>
@@ -122,5 +161,8 @@ onMounted(fetchLatest)
 .indicator-item {
   color: #4b5563;
   font-size: 0.875rem;
+}
+.history-card {
+  margin-top: 1.5rem;
 }
 </style>
