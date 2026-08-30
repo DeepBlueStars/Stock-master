@@ -51,12 +51,25 @@ Task 12/13/14 增量预检：
 - 风险信号自报：公共 API 契约变更（构造器签名）→ 触发每任务 reviewer
 - 审查：task reviewer（sonnet）→ Spec PASS + Quality PASS，2 条 MINOR（非阻断）
 
-### Task 14（进行中，Step 2 需真实 webhook）
+### Task 14（已完成，Step 2 真实 webhook 联调通过）
 
-- 阶段：final-review → final-fix 已完成
-- 映射 OpenSpec：tasks.md 6.5（未勾选，Step 2 需真实 webhook，人工）
+- 阶段：done
+- 映射 OpenSpec：tasks.md 6.5（已勾选）
 - Step 1 自动化验证：后端 `mvn test` 20/20 全绿；前端 `npm run build` 成功（vite 7.2.6，9.57s）
 - 最终轻量审查（opus）：PASS_WITH_FINDINGS → 1 条 IMPORTANT（webhook URL 令牌可能随异常堆栈泄漏到日志）
 - final-fix：ea3b2b0 fix: 飞书推送异常日志不再打印 webhook URL 令牌（catch 只记 `e.getClass().getSimpleName()`，不再打印 throwable）
 - final-fix 复查：coordinator 直接核对 diff（单行改动，移除 throwable 参数）→ 已解决，无需二次 subagent
-- 剩余：Step 2 真实 webhook 端到端联调（需用户在飞书群添加机器人、取得 webhook URL/secret，配置 `feishu.enabled=true` 后触发判定）
+- Step 2 真实 webhook 端到端联调（2026-08-29 执行，coordinator 直接操作）：
+  - 临时改 `monitor.cron` 为 `*/10 * * * * *`（每 10s 触发）、`--server.port=8889` 启动当前代码后端（避免与旧 8888 冲突）
+  - 造触发数据：向 `etf_daily_quotes` 插入 `515180` 临时收盘价 `1.15`（≤ 止损价 1.2，`updated_at=now`）
+  - 判定结果：`飞书推送成功: userId=…, symbol=515180` + `生成站内提醒: … type=STOP_LOSS, symbol=515180` 同时出现
+  - 收尾：删除临时行情、还原 `last_trigger_direction=TAKE_PROFIT`、还原 cron、停止 8889 后端
+  - 结论：飞书机器人消息与站内提醒双通道均正常，6.5 验证通过
+
+## verify-fail 修复循环（2026-08-30）
+
+- 触发：verify W-1（application.yml 中真实 webhook 凭据硬编码且 enabled: true，用户手动验证配置未提交）
+- 用户决策：恢复默认配置（enabled: false、webhook-url: ""），真实地址运行时配置
+- 修复：派发修复 agent 执行 `git restore StockAI/src/main/resources/application.yml`（HEAD 版本即默认配置），未改其他文件
+- 验证：`mvn -q test` 退出码 0 全部通过；application.yml 与 HEAD 完全一致（clean）
+- 阶段：verify-fail 修复完成，等待 build guard → verify

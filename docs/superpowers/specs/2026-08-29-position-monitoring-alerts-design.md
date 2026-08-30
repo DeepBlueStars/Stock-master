@@ -2,6 +2,8 @@
 comet_change: position-monitoring-alerts
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-30-position-monitoring-alerts
+status: final
 ---
 
 # 持仓止盈止损监控 — 技术设计

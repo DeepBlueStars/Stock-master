@@ -2,6 +2,7 @@
 change: position-monitoring-alerts
 design-doc: docs/superpowers/specs/2026-08-29-position-monitoring-alerts-design.md
 base-ref: 65c06986ee86257c466e257fe568d97622f2b3a1
+archived-with: 2026-08-30-position-monitoring-alerts
 ---
 
 # 持仓止盈止损监控 实施计划
@@ -91,7 +92,7 @@ base-ref: 65c06986ee86257c466e257fe568d97622f2b3a1
   - `PositionMonitor` 字段：`id:String`、`userId:String`、`symbol:String`、`stockName:String`、`type:String`、`takeProfitType:String`、`takeProfitValue:BigDecimal`、`stopLossType:String`、`stopLossValue:BigDecimal`、`enabled:Boolean`、`lastTriggerDirection:String`、`createdAt:LocalDateTime`、`updatedAt:LocalDateTime`（`getX()/setX()`）。
   - `Notification` 字段：`id:String`、`userId:String`、`type:String`、`symbol:String`、`stockName:String`、`content:String`、`read:Boolean`、`createdAt:LocalDateTime`（`getX()/setX()`；布尔字段 getter 用 `getRead()`）。
 
-- [ ] **Step 1: 创建 `PositionMonitor` PO（模仿 `po/Position.java` 的写法）**
+- [x] **Step 1: 创建 `PositionMonitor` PO（模仿 `po/Position.java` 的写法）**
 
 `StockAI/src/main/java/com/xian/stockai/po/PositionMonitor.java`：
 
@@ -189,7 +190,7 @@ public class PositionMonitor implements Serializable {
 }
 ```
 
-- [ ] **Step 2: 创建 `Notification` PO**
+- [x] **Step 2: 创建 `Notification` PO**
 
 `StockAI/src/main/java/com/xian/stockai/po/Notification.java`：
 
@@ -258,12 +259,12 @@ public class Notification implements Serializable {
 }
 ```
 
-- [ ] **Step 3: 编译验证**
+- [x] **Step 3: 编译验证**
 
 Run: 在 `d:\WorkSpace\MainProject\StockAI-master\StockAI` 执行 `./mvnw -q compile`
 Expected: BUILD SUCCESS（无编译错误）。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/po/PositionMonitor.java StockAI/src/main/java/com/xian/stockai/po/Notification.java
@@ -284,7 +285,7 @@ git commit -m "feat: 新增持仓止盈止损监控规则与站内提醒 PO"
   - `PositionMonitorRepository` 方法：`findByUserIdAndSymbol(String,String):PositionMonitor`、`findByUserId(String):List<PositionMonitor>`、`findByEnabledTrue():List<PositionMonitor>`
   - `NotificationRepository` 方法：`findByUserIdOrderByCreatedAtDesc(String):List<Notification>`、`findByUserIdAndIdIn(String,Collection<String>):List<Notification>`
 
-- [ ] **Step 1: 创建 `PositionMonitorRepository`**
+- [x] **Step 1: 创建 `PositionMonitorRepository`**
 
 `StockAI/src/main/java/com/xian/stockai/dao/PositionMonitorRepository.java`：
 
@@ -305,7 +306,7 @@ public interface PositionMonitorRepository extends MongoRepository<PositionMonit
 }
 ```
 
-- [ ] **Step 2: 创建 `NotificationRepository`**
+- [x] **Step 2: 创建 `NotificationRepository`**
 
 `StockAI/src/main/java/com/xian/stockai/dao/NotificationRepository.java`：
 
@@ -325,12 +326,12 @@ public interface NotificationRepository extends MongoRepository<Notification, St
 }
 ```
 
-- [ ] **Step 3: 编译验证**
+- [x] **Step 3: 编译验证**
 
 Run: `./mvnw -q compile`
 Expected: BUILD SUCCESS。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/dao/PositionMonitorRepository.java StockAI/src/main/java/com/xian/stockai/dao/NotificationRepository.java
@@ -350,7 +351,7 @@ git commit -m "feat: 新增监控规则与站内提醒 Repository"
 - Consumes: `Notification`（Task 1）、`NotificationRepository`（Task 2）
 - Produces: `NotificationSender` 接口方法 `void send(Notification notification)`（Task 4/5 注入使用）
 
-- [ ] **Step 1: 写失败测试 `InAppNotificationSenderTest`**
+- [x] **Step 1: 写失败测试 `InAppNotificationSenderTest`**
 
 `StockAI/src/test/java/com/xian/stockai/service/notify/InAppNotificationSenderTest.java`：
 
@@ -388,12 +389,12 @@ class InAppNotificationSenderTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败（编译失败即红）**
+- [x] **Step 2: 运行测试确认失败（编译失败即红）**
 
 Run: `./mvnw -q test -Dtest=InAppNotificationSenderTest`
 Expected: 编译失败（`InAppNotificationSender` 不存在）。
 
-- [ ] **Step 3: 实现接口与实现类**
+- [x] **Step 3: 实现接口与实现类**
 
 `StockAI/src/main/java/com/xian/stockai/service/notify/NotificationSender.java`：
 
@@ -435,12 +436,12 @@ public class InAppNotificationSender implements NotificationSender {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `./mvnw -q test -Dtest=InAppNotificationSenderTest`
 Expected: BUILD SUCCESS（1 test passed）。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/service/notify/NotificationSender.java StockAI/src/main/java/com/xian/stockai/service/notify/InAppNotificationSender.java StockAI/src/test/java/com/xian/stockai/service/notify/InAppNotificationSenderTest.java
@@ -467,7 +468,7 @@ git commit -m "feat: 新增通知通道接口与站内提醒实现"
   - `Result<Void> enable(String userId, String symbol, boolean enabled)`
   - 常量：`TYPE_PRICE="PRICE"`、`TYPE_RATE="RATE"`、`DIR_NONE="NONE"`、`DIR_TAKE_PROFIT="TAKE_PROFIT"`、`DIR_STOP_LOSS="STOP_LOSS"`
 
-- [ ] **Step 1: 创建三个请求 VO**
+- [x] **Step 1: 创建三个请求 VO**
 
 `MonitorSaveRequest.java`：
 
@@ -518,7 +519,7 @@ public class MonitorDeleteRequest {
 }
 ```
 
-- [ ] **Step 2: 写失败测试（CRUD 用例）**
+- [x] **Step 2: 写失败测试（CRUD 用例）**
 
 `StockAI/src/test/java/com/xian/stockai/service/MonitorServiceTest.java`（本轮先写出完整类，含 Task 5 的判定用例，但 Step 3 只实现 CRUD，判定的 4 个用例会因 `checkRule` 不存在而编译失败，属于预期红）：
 
@@ -752,7 +753,7 @@ class MonitorServiceTest {
 }
 ```
 
-- [ ] **Step 3: 实现 `MonitorService`（CRUD + 完整构造器；判定方法本轮先置为占位，Task 5 补齐）**
+- [x] **Step 3: 实现 `MonitorService`（CRUD + 完整构造器；判定方法本轮先置为占位，Task 5 补齐）**
 
 `StockAI/src/main/java/com/xian/stockai/service/MonitorService.java`：
 
@@ -879,14 +880,14 @@ public class MonitorService {
 }
 ```
 
-- [ ] **Step 4: 运行 CRUD 相关测试（红：判定用例仍失败）**
+- [x] **Step 4: 运行 CRUD 相关测试（红：判定用例仍失败）**
 
 Run: `./mvnw -q test -Dtest=MonitorServiceTest`
 Expected: `saveCreatesEnabledRuleWithNoneDirection`、`saveRejectsRuleWithoutThresholds`、`enableUpdatesRule`、`deleteRemovesRule` 通过；`checkRule` 相关用例编译失败——这是预期，Task 5 补齐后转绿。
 
 > 注：为满足「每个 Task 独立可测」，本轮 4 个判定用例会因 `checkRule` 缺失而编译失败，属正常中间态。若希望本轮即可 `test-compile` 通过，可临时将 4 个判定用例注释掉，Task 5 再放开。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/vo/MonitorSaveRequest.java StockAI/src/main/java/com/xian/stockai/vo/MonitorEnableRequest.java StockAI/src/main/java/com/xian/stockai/vo/MonitorDeleteRequest.java StockAI/src/main/java/com/xian/stockai/service/MonitorService.java StockAI/src/test/java/com/xian/stockai/service/MonitorServiceTest.java
@@ -908,12 +909,12 @@ git commit -m "feat: MonitorService 规则 CRUD 与请求体 VO"
   - `void checkRule(PositionMonitor rule)`
   - `BigDecimal getCurrentPrice(String symbol)`
 
-- [ ] **Step 1: 运行测试确认判定用例失败**
+- [x] **Step 1: 运行测试确认判定用例失败**
 
 Run: `./mvnw -q test -Dtest=MonitorServiceTest`
 Expected: `priceTakeProfitTriggersWhenCloseAboveTarget` 等 4 个用例编译失败（`checkRule` 不存在）。
 
-- [ ] **Step 2: 在 `MonitorService` 追加判定实现（追加到 `isValidType` 之后、类结束前）**
+- [x] **Step 2: 在 `MonitorService` 追加判定实现（追加到 `isValidType` 之后、类结束前）**
 
 ```java
     public void checkAll() {
@@ -1033,12 +1034,12 @@ import java.math.RoundingMode;
 
 （将判断方法里的全限定名 `com.xian.stockai.po.EtfDailyQuotes` 等替换为短名：`EtfDailyQuotes`、`MarketQuotes`、`Notification`，`java.math.RoundingMode.HALF_UP` 替换为 `RoundingMode.HALF_UP`。）
 
-- [ ] **Step 3: 运行测试确认全部通过**
+- [x] **Step 3: 运行测试确认全部通过**
 
 Run: `./mvnw -q test -Dtest=MonitorServiceTest`
 Expected: 8 个测试全部通过（4 CRUD + 4 判定/去重 + ETF）。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/service/MonitorService.java StockAI/src/test/java/com/xian/stockai/service/MonitorServiceTest.java
@@ -1056,7 +1057,7 @@ git commit -m "feat: 实现止盈止损四模式判定与去重状态机"
 **Interfaces:**
 - Consumes: `MonitorService.checkAll()`（Task 5）
 
-- [ ] **Step 1: 创建 `MonitorTask`**
+- [x] **Step 1: 创建 `MonitorTask`**
 
 `StockAI/src/main/java/com/xian/stockai/task/MonitorTask.java`：
 
@@ -1084,7 +1085,7 @@ public class MonitorTask {
 }
 ```
 
-- [ ] **Step 2: 在 `application.yml` 末尾追加配置**
+- [x] **Step 2: 在 `application.yml` 末尾追加配置**
 
 ```yaml
 # 止盈止损监控定时任务 cron（工作日收盘后 15:30）
@@ -1092,12 +1093,12 @@ monitor:
   cron: "0 30 15 * * ?"
 ```
 
-- [ ] **Step 3: 编译验证**
+- [x] **Step 3: 编译验证**
 
 Run: `./mvnw -q compile`
 Expected: BUILD SUCCESS（`@EnableScheduling` 已在 `StockAiApplication` 上，无需额外启用）。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/task/MonitorTask.java StockAI/src/main/resources/application.yml
@@ -1119,7 +1120,7 @@ git commit -m "feat: 新增收盘后止盈止损定时判定任务"
   - `POST /monitor/delete` → `Result<Void>`
   - `POST /monitor/enable` → `Result<Void>`
 
-- [ ] **Step 1: 创建 `MonitorController`（模仿 `controller/StockController.java`）**
+- [x] **Step 1: 创建 `MonitorController`（模仿 `controller/StockController.java`）**
 
 `StockAI/src/main/java/com/xian/stockai/controller/MonitorController.java`：
 
@@ -1164,19 +1165,19 @@ public class MonitorController {
 }
 ```
 
-- [ ] **Step 2: 编译验证**
+- [x] **Step 2: 编译验证**
 
 Run: `./mvnw -q compile`
 Expected: BUILD SUCCESS。
 
-- [ ] **Step 3: 冒烟（可选，启动服务后）**
+- [x] **Step 3: 冒烟（可选，启动服务后）**
 
 ```bash
 curl -X POST http://localhost:8888/monitor/save -H "Content-Type: application/json" -d "{\"userId\":\"6928fca14f206ada1b7a9269\",\"symbol\":\"000001\",\"takeProfitType\":\"PRICE\",\"takeProfitValue\":15.00}"
 ```
 Expected: 返回 `{"state":0,...,"data":{...}}`。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/controller/MonitorController.java
@@ -1200,7 +1201,7 @@ git commit -m "feat: 新增监控规则 Controller 端点"
   - `Result<Void> NotificationService.markRead(String userId, List<String> ids)`
   - `POST /notification/list`、`POST /notification/read`
 
-- [ ] **Step 1: 创建 `NotificationReadRequest` VO**
+- [x] **Step 1: 创建 `NotificationReadRequest` VO**
 
 ```java
 package com.xian.stockai.vo;
@@ -1216,7 +1217,7 @@ public class NotificationReadRequest {
 }
 ```
 
-- [ ] **Step 2: 写失败测试 `NotificationServiceTest`**
+- [x] **Step 2: 写失败测试 `NotificationServiceTest`**
 
 ```java
 package com.xian.stockai.service;
@@ -1278,12 +1279,12 @@ class NotificationServiceTest {
 }
 ```
 
-- [ ] **Step 3: 运行确认失败**
+- [x] **Step 3: 运行确认失败**
 
 Run: `./mvnw -q test -Dtest=NotificationServiceTest`
 Expected: 编译失败（`NotificationService` 不存在）。
 
-- [ ] **Step 4: 实现 `NotificationService` 与 `NotificationController`**
+- [x] **Step 4: 实现 `NotificationService` 与 `NotificationController`**
 
 `StockAI/src/main/java/com/xian/stockai/service/NotificationService.java`：
 
@@ -1360,12 +1361,12 @@ public class NotificationController {
 }
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `./mvnw -q test -Dtest=NotificationServiceTest`
 Expected: 3 个测试全部通过。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/vo/NotificationReadRequest.java StockAI/src/main/java/com/xian/stockai/service/NotificationService.java StockAI/src/main/java/com/xian/stockai/controller/NotificationController.java StockAI/src/test/java/com/xian/stockai/service/NotificationServiceTest.java
@@ -1383,7 +1384,7 @@ git commit -m "feat: 新增站内提醒列表与标记已读端点"
 - Consumes: 后端 `POST /monitor/save`、`POST /monitor/list`（Task 7）、`POST /monitor/delete`；`config.baseUrl`（现有）
 - Produces: 前端「监控」按钮与设置弹窗
 
-- [ ] **Step 1: 在 `Dashboard.vue` `<script setup>` 顶部，将 `Bell` 加入图标导入**
+- [x] **Step 1: 在 `Dashboard.vue` `<script setup>` 顶部，将 `Bell` 加入图标导入**
 
 将：
 
@@ -1397,7 +1398,7 @@ import { Top, Bottom, Plus, Minus, Delete, TrendCharts, Document, Histogram } fr
 import { Top, Bottom, Plus, Minus, Delete, TrendCharts, Document, Histogram, Bell } from '@element-plus/icons-vue';
 ```
 
-- [ ] **Step 2: 在「响应式数据」区（`const stockInfoVisible = ref(false);` 之后）新增监控弹窗状态与表单**
+- [x] **Step 2: 在「响应式数据」区（`const stockInfoVisible = ref(false);` 之后）新增监控弹窗状态与表单**
 
 ```js
 // 监控设置弹窗
@@ -1414,7 +1415,7 @@ const monitorForm = ref({
 });
 ```
 
-- [ ] **Step 3: 在 `</script>` 之前（`openReport` 函数之后）新增监控相关函数**
+- [x] **Step 3: 在 `</script>` 之前（`openReport` 函数之后）新增监控相关函数**
 
 ```js
 // 打开监控设置弹窗（回显该股票已有规则）
@@ -1500,7 +1501,7 @@ async function disableMonitor() {
 }
 ```
 
-- [ ] **Step 4: 在持仓表格「操作」列（`label="操作" width="140"` 的 `<el-table-column>` 内）新增「监控」按钮，并将列宽改为 `200`**
+- [x] **Step 4: 在持仓表格「操作」列（`label="操作" width="140"` 的 `<el-table-column>` 内）新增「监控」按钮，并将列宽改为 `200`**
 
 将：
 
@@ -1522,7 +1523,7 @@ async function disableMonitor() {
 </el-button>
 ```
 
-- [ ] **Step 5: 在 `</template>` 末尾（`page-footer` 之后、根 `<div>` 结束前）新增监控弹窗**
+- [x] **Step 5: 在 `</template>` 末尾（`page-footer` 之后、根 `<div>` 结束前）新增监控弹窗**
 
 ```html
 <!-- 监控设置弹窗 -->
@@ -1581,7 +1582,7 @@ async function disableMonitor() {
 </el-dialog>
 ```
 
-- [ ] **Step 6: 在 `<style scoped>` 末尾追加两段样式**
+- [x] **Step 6: 在 `<style scoped>` 末尾追加两段样式**
 
 ```css
 .monitor-stock-info {
@@ -1596,14 +1597,14 @@ async function disableMonitor() {
 }
 ```
 
-- [ ] **Step 7: 手动验证**
+- [x] **Step 7: 手动验证**
 
 1. `cd StockAI-Console && npm run dev`，访问 `/stock`。
 2. 点击持仓列表某行「监控」按钮，弹出「止盈止损监控设置」。
 3. 设置价格止盈、保存，重新打开该行应回显已保存规则。
 4. 再次打开点击「删除规则」，应删除成功。
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add StockAI-Console/src/components/Dashboard.vue
@@ -1620,7 +1621,7 @@ git commit -m "feat: 持仓列表新增止盈止损监控设置入口与表单"
 **Interfaces:**
 - Consumes: 后端 `POST /notification/list`、`POST /notification/read`（Task 8）；`config.baseUrl`（现有）
 
-- [ ] **Step 1: 替换 `<script setup>` 顶部，引入 axios/config 与响应式 API**
+- [x] **Step 1: 替换 `<script setup>` 顶部，引入 axios/config 与响应式 API**
 
 将：
 
@@ -1657,7 +1658,7 @@ const loadingNotifications = ref(false)
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 ```
 
-- [ ] **Step 2: 在 `toggleDarkMode` 函数之后新增提醒相关函数**
+- [x] **Step 2: 在 `toggleDarkMode` 函数之后新增提醒相关函数**
 
 ```js
 async function fetchNotifications() {
@@ -1707,7 +1708,7 @@ async function markAllRead() {
 onMounted(fetchNotifications)
 ```
 
-- [ ] **Step 3: 在模板顶部导航栏中，将原铃铛 `el-dropdown`（「无新消息」块）替换为带徽标的铃铛**
+- [x] **Step 3: 在模板顶部导航栏中，将原铃铛 `el-dropdown`（「无新消息」块）替换为带徽标的铃铛**
 
 将：
 
@@ -1734,7 +1735,7 @@ onMounted(fetchNotifications)
         </el-badge>
 ```
 
-- [ ] **Step 4: 在根 `<div class="common-layout">` 结束前（`</el-container>` 之后、根 `</div>` 之前）新增提醒抽屉**
+- [x] **Step 4: 在根 `<div class="common-layout">` 结束前（`</el-container>` 之后、根 `</div>` 之前）新增提醒抽屉**
 
 ```html
     <!-- 站内提醒抽屉 -->
@@ -1768,7 +1769,7 @@ onMounted(fetchNotifications)
     </el-drawer>
 ```
 
-- [ ] **Step 5: 在 `<style scoped>` 末尾追加通知列表样式**
+- [x] **Step 5: 在 `<style scoped>` 末尾追加通知列表样式**
 
 ```css
 .notification-list {
@@ -1808,13 +1809,13 @@ onMounted(fetchNotifications)
 }
 ```
 
-- [ ] **Step 6: 手动验证**
+- [x] **Step 6: 手动验证**
 
 1. `npm run dev`，顶部铃铛应显示未读徽标数（无提醒时为隐藏）。
 2. 点击铃铛打开抽屉，展示提醒列表（未读高亮）。
 3. 点击「标记已读」或「全部已读」，徽标数减少、列表刷新。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add StockAI-Console/src/App.vue
@@ -1827,17 +1828,17 @@ git commit -m "feat: 顶部导航新增站内提醒铃铛与消息抽屉"
 
 **Files:** 无新增（验证与修复）
 
-- [ ] **Step 1: 后端全量测试**
+- [x] **Step 1: 后端全量测试**
 
 Run: 在 `d:\WorkSpace\MainProject\StockAI-master\StockAI` 执行 `./mvnw test`
 Expected: 全部测试（含 `MonitorServiceTest`、`NotificationServiceTest`、`InAppNotificationSenderTest`、`StockAiApplicationTests`）通过，BUILD SUCCESS。
 
-- [ ] **Step 2: 前端构建**
+- [x] **Step 2: 前端构建**
 
 Run: 在 `d:\WorkSpace\MainProject\StockAI-master\StockAI-Console` 执行 `npm run build`
 Expected: 构建成功，无语法错误。
 
-- [ ] **Step 3: 端到端联调**
+- [x] **Step 3: 端到端联调**
 
 1. 启动后端 `./mvnw spring-boot:run`（MongoDB 本地 `localhost:27017`）。
 2. 启动前端 `npm run dev`。
@@ -1847,9 +1848,9 @@ Expected: 构建成功，无语法错误。
 
 > 说明：若不便等待 cron，可通过在 `MonitorController` 中临时暴露一个仅联调用、验证后移除（或保留为 `POST /monitor/checkNow` 的调试端点）来触发 `monitorService.checkAll()`；注：tasks.md 未要求该端点，联调结束请移除，避免扩大范围。
 
-- [ ] **Step 4: 修复联调发现的问题后重复 Step 1/2**
+- [x] **Step 4: 修复联调发现的问题后重复 Step 1/2**
 
-- [ ] **Step 5: Commit（如有修复）**
+- [x] **Step 5: Commit（如有修复）**
 
 ```bash
 git add -A && git commit -m "fix: 联调修复止盈止损监控问题"
@@ -1868,7 +1869,7 @@ git add -A && git commit -m "fix: 联调修复止盈止损监控问题"
 - Consumes: `Notification`（Task 1）、`NotificationSender`（Task 3）
 - Produces: `FeishuNotificationSender implements NotificationSender`（`@ConditionalOnProperty(prefix="feishu", name="enabled", havingValue="true")` 门控；`buildPayload` / `sign` 为包级可见，供测试）
 
-- [ ] **Step 1: 在 `application.yml` 末尾追加配置**
+- [x] **Step 1: 在 `application.yml` 末尾追加配置**
 
 ```yaml
 # 飞书自定义机器人推送（默认关闭）
@@ -1878,7 +1879,7 @@ feishu:
   secret: ""
 ```
 
-- [ ] **Step 2: 写失败测试 `FeishuNotificationSenderTest`**
+- [x] **Step 2: 写失败测试 `FeishuNotificationSenderTest`**
 
 `StockAI/src/test/java/com/xian/stockai/service/notify/FeishuNotificationSenderTest.java`：
 
@@ -1964,12 +1965,12 @@ class FeishuNotificationSenderTest {
 }
 ```
 
-- [ ] **Step 3: 运行测试确认失败（编译失败即红）**
+- [x] **Step 3: 运行测试确认失败（编译失败即红）**
 
 Run: `./mvnw -q test -Dtest=FeishuNotificationSenderTest`
 Expected: 编译失败（`FeishuNotificationSender` 不存在）。
 
-- [ ] **Step 4: 实现 `FeishuNotificationSender`**
+- [x] **Step 4: 实现 `FeishuNotificationSender`**
 
 `StockAI/src/main/java/com/xian/stockai/service/notify/FeishuNotificationSender.java`：
 
@@ -2068,12 +2069,12 @@ public class FeishuNotificationSender implements NotificationSender {
 }
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `./mvnw -q test -Dtest=FeishuNotificationSenderTest`
 Expected: 4 个测试全部通过。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add StockAI/src/main/resources/application.yml StockAI/src/main/java/com/xian/stockai/service/notify/FeishuNotificationSender.java StockAI/src/test/java/com/xian/stockai/service/notify/FeishuNotificationSenderTest.java
@@ -2092,7 +2093,7 @@ git commit -m "feat: 新增飞书自定义机器人推送通道"
 - Consumes: `NotificationSender`（Task 3）、`FeishuNotificationSender`（Task 12，条件存在）
 - Produces: `MonitorService` 构造器签名变为 `List<NotificationSender>`；`notify()` 遍历所有 sender
 
-- [ ] **Step 1: 改 `MonitorService` 注入与 `notify()`**
+- [x] **Step 1: 改 `MonitorService` 注入与 `notify()`**
 
 1. 字段 `private final NotificationSender notificationSender;` → `private final List<NotificationSender> notificationSenders;`
 2. 构造器参数 `NotificationSender notificationSender` → `List<NotificationSender> notificationSenders`，赋值同步改名。
@@ -2105,7 +2106,7 @@ git commit -m "feat: 新增飞书自定义机器人推送通道"
         }
 ```
 
-- [ ] **Step 2: 更新 `MonitorServiceTest`**
+- [x] **Step 2: 更新 `MonitorServiceTest`**
 
 1. 删除 `@InjectMocks private MonitorService monitorService;`，改为手动构造（`@BeforeEach`）：
 
@@ -2140,17 +2141,17 @@ git commit -m "feat: 新增飞书自定义机器人推送通道"
     }
 ```
 
-- [ ] **Step 3: 运行测试确认通过**
+- [x] **Step 3: 运行测试确认通过**
 
 Run: `./mvnw -q test -Dtest=MonitorServiceTest`
 Expected: 原 8 个用例 + `notifyInvokesAllSenders` 全部通过（9 个）。
 
-- [ ] **Step 4: 后端全量测试**
+- [x] **Step 4: 后端全量测试**
 
 Run: `./mvnw -q test`
 Expected: BUILD SUCCESS（含 `FeishuNotificationSenderTest`、`MonitorServiceTest`、`NotificationServiceTest`、`InAppNotificationSenderTest`）。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/service/MonitorService.java StockAI/src/test/java/com/xian/stockai/service/MonitorServiceTest.java
@@ -2163,21 +2164,21 @@ git commit -m "feat: MonitorService 改为 List<NotificationSender> 多渠道发
 
 **Files:** 无新增（验证与修复）
 
-- [ ] **Step 1: 后端全量测试 + 前端构建**
+- [x] **Step 1: 后端全量测试 + 前端构建**
 
 Run: 在 `StockAI` 执行 `./mvnw test`；在 `StockAI-Console` 执行 `npm run build`
 Expected: 均成功。
 
-- [ ] **Step 2: 端到端联调（真实 webhook）**
+- [x] **Step 2: 端到端联调（真实 webhook）**
 
 1. 在飞书群添加自定义机器人，取得 webhook URL（可选加签密钥）。
 2. `application.yml` 设 `feishu.enabled: true`、`webhook-url` 与 `secret`。
 3. 启动后端 `./mvnw spring-boot:run`，构造触达现价并触发判定。
 4. 验证：飞书群收到机器人文本消息，且 `notification` 集合仍生成站内提醒（两者互不影响）。
 
-- [ ] **Step 3: 修复联调发现的问题后重复 Step 1**
+- [x] **Step 3: 修复联调发现的问题后重复 Step 1**
 
-- [ ] **Step 4: Commit（如有修复）**
+- [x] **Step 4: Commit（如有修复）**
 
 ```bash
 git add -A && git commit -m "fix: 联调修复飞书推送问题"
