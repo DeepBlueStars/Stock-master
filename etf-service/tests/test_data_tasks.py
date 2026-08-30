@@ -46,3 +46,11 @@ def test_start_scheduler_registers_data_jobs(monkeypatch):
     assert "update_index_constituents" in jobs
     assert "update_stock_fundamentals" in jobs
     assert "update_stock_industry_concept" in jobs
+
+
+def test_update_index_valuation_calls_service():
+    with patch("app.tasks.etf_task.valuation_service") as svc:
+        svc.update_all_index_valuation.return_value = 42
+        from app.tasks.etf_task import update_index_valuation
+        update_index_valuation()
+        svc.update_all_index_valuation.assert_called_once()

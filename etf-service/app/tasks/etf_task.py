@@ -12,6 +12,7 @@ from .data_tasks import (
 )
 from ..services.index_service import index_service
 from ..services.stock_service import stock_service
+from ..services.valuation_service import valuation_service
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -64,6 +65,15 @@ def update_etf_basic_info():
     except Exception as e:
         logger.error(f"更新ETF基本信息失败: {e}", exc_info=True)
 
+def update_index_valuation():
+    """指数估值（PE/PB 及其历史分位）收盘后更新。"""
+    logger.info("开始更新指数估值")
+    try:
+        n = valuation_service.update_all_index_valuation()
+        logger.info("指数估值更新完成，写入 %s 条", n)
+    except Exception as e:  # noqa: BLE001
+        logger.error("更新指数估值失败: %s", e, exc_info=True)
+
 def start_scheduler():
     """启动定时任务"""
     try:
@@ -93,6 +103,14 @@ def start_scheduler():
                 trigger=CronTrigger(day_of_week="mon-fri", hour=15, minute=30),
                 id="update_index_daily",
                 name="交易日15:30后增量更新指数行情",
+                replace_existing=True,
+            )
+
+            scheduler.add_job(
+                func=update_index_valuation,
+                trigger=CronTrigger(day_of_week="mon-fri", hour=15, minute=30),
+                id="update_index_valuation",
+                name="交易日15:30后更新指数估值",
                 replace_existing=True,
             )
 
