@@ -48,3 +48,25 @@ def test_update_stock_daily_incremental_only_upserts():
         n = svc.update_stock_daily_incremental()
     assert n == 1
     assert ("600000", "2024-01-02") in svc.mongo.written
+
+
+def _fundamental(symbol):
+    return {"symbol": symbol, "report_date": "2024-03-31", "pe": 12.0, "pb": 1.5,
+            "roe": 8.0, "revenue_yoy": 10.0, "profit_yoy": 15.0, "gross_margin": 30.0,
+            "data_source": "akshare"}
+
+
+class _FundMongo(_FakeMongo):
+    def upsert_stock_fundamental(self, data):
+        self.written.add((data["symbol"], data["report_date"]))
+        return True
+
+
+def test_fetch_and_store_fundamentals_writes_records():
+    svc = StockService(mongo=_FundMongo(["600000"]))
+    mod = import_module("app.services.stock_service")
+    with patch.object(mod, "fetch_with_fallback",
+                      side_effect=lambda s, m, c, **kw: [_fundamental(c)]):
+        n = svc.fetch_and_store_fundamentals()
+    assert n == 1
+    assert ("600000", "2024-03-31") in svc.mongo.written

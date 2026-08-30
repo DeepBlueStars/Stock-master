@@ -46,5 +46,18 @@ class StockService:
         logger.info("个股K线增量更新完成，写入 %s 条", total)
         return total
 
+    def fetch_and_store_fundamentals(self) -> int:
+        """采集优质池个股财务指标（PE/PB/ROE/营收增速/净利增速/毛利率）写入 stock_fundamentals。"""
+        total = 0
+        for symbol in self._pool():
+            fundamentals = fetch_with_fallback(get_source_chain(), "fetch_fundamentals", symbol)
+            if not fundamentals:
+                continue
+            for f in fundamentals:
+                if self.mongo.upsert_stock_fundamental(f):
+                    total += 1
+        logger.info("个股财务指标采集完成，写入 %s 条", total)
+        return total
+
 
 stock_service = StockService()
