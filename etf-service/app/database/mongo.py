@@ -21,6 +21,12 @@ class MongoDBClient:
         # 集合引用
         self.etf_basic_info: Collection = self.db["etf_basic_info"]
         self.etf_daily_quotes: Collection = self.db["etf_daily_quotes"]
+        # 数据地基新增集合（禁止改造已有集合）
+        self.index_daily_quotes: Collection = self.db["index_daily_quotes"]
+        self.stock_daily_kline: Collection = self.db["stock_daily_kline"]
+        self.stock_fundamentals: Collection = self.db["stock_fundamentals"]
+        self.stock_industry_concept: Collection = self.db["stock_industry_concept"]
+        self.index_constituents: Collection = self.db["index_constituents"]
     
     def get_etf_basic_info(self) -> list:
         """获取所有ETF基本信息"""
@@ -79,6 +85,75 @@ class MongoDBClient:
             print(f"更新ETF基本信息失败: {e}")
             return False
     
+    def upsert_index_daily_quote(self, data: Dict[str, Any]) -> bool:
+        """更新或插入指数日行情（去重键 index_code + trade_date）"""
+        try:
+            self.index_daily_quotes.update_one(
+                {"index_code": data["index_code"], "trade_date": data["trade_date"]},
+                {"$set": data},
+                upsert=True,
+            )
+            return True
+        except Exception as e:
+            print(f"更新指数日行情失败: {e}")
+            return False
+
+    def upsert_stock_daily_kline(self, data: Dict[str, Any]) -> bool:
+        """更新或插入个股日K线（去重键 symbol + trade_date）"""
+        try:
+            self.stock_daily_kline.update_one(
+                {"symbol": data["symbol"], "trade_date": data["trade_date"]},
+                {"$set": data},
+                upsert=True,
+            )
+            return True
+        except Exception as e:
+            print(f"更新个股日K线失败: {e}")
+            return False
+
+    def upsert_stock_fundamental(self, data: Dict[str, Any]) -> bool:
+        """更新或插入个股财务指标（去重键 symbol + report_date）"""
+        try:
+            self.stock_fundamentals.update_one(
+                {"symbol": data["symbol"], "report_date": data["report_date"]},
+                {"$set": data},
+                upsert=True,
+            )
+            return True
+        except Exception as e:
+            print(f"更新个股财务指标失败: {e}")
+            return False
+
+    def upsert_stock_industry_concept(self, data: Dict[str, Any]) -> bool:
+        """更新或插入个股行业概念（去重键 symbol）"""
+        try:
+            self.stock_industry_concept.update_one(
+                {"symbol": data["symbol"]},
+                {"$set": data},
+                upsert=True,
+            )
+            return True
+        except Exception as e:
+            print(f"更新个股行业概念失败: {e}")
+            return False
+
+    def upsert_index_constituent(self, data: Dict[str, Any]) -> bool:
+        """更新或插入指数成分股（去重键 index_code + symbol）"""
+        try:
+            self.index_constituents.update_one(
+                {"index_code": data["index_code"], "symbol": data["symbol"]},
+                {"$set": data},
+                upsert=True,
+            )
+            return True
+        except Exception as e:
+            print(f"更新指数成分股失败: {e}")
+            return False
+
+    def get_constituent_symbols(self) -> list:
+        """获取优质池全部成分股代码（去重）"""
+        return list(self.index_constituents.distinct("symbol"))
+
     def close(self):
         """关闭数据库连接"""
         self.client.close()
