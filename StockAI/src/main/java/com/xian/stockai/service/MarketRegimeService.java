@@ -95,6 +95,20 @@ public class MarketRegimeService {
                 ind.getPePercentile(), ind.getPbPercentile());
     }
 
+    public String generateReport(String regime, String positionAdvice, RegimeIndicators ind) {
+        String prompt = String.format(
+                "你是市场温度计助手。根据以下量化判定结果，用中文输出一段不超过100字的市场日报，"
+                        + "必须包含「结论」「依据」「仓位建议」三部分。\n"
+                        + "市场状态：%s\n仓位建议：%s\n"
+                        + "基准指数：%s\nMA20=%.2f MA60=%.2f MA250=%.2f 最新收盘=%.2f\n"
+                        + "量比(5日/60日)=%.2f 20日年化波动率=%.2f%%\nPE分位=%.2f PB分位=%.2f",
+                regime, positionAdvice, ind.getBenchmarkIndex(),
+                ind.getMa20(), ind.getMa60(), ind.getMa250(), ind.getLatestClose(),
+                ind.getVolumeRatio(), ind.getVolatility().multiply(BigDecimal.valueOf(100)),
+                ind.getPePercentile(), ind.getPbPercentile());
+        return chatClient.prompt().user(prompt).call().content();
+    }
+
     public Result<MarketRegimeRecord> evaluateAndSave() {
         RegimeIndicators ind = calculateIndicators(benchmarkIndex);
         if (ind == null) {
@@ -102,7 +116,14 @@ public class MarketRegimeService {
         }
         String regime = RegimeRule.determineRegime(ind, volatilityHigh, valuationHigh);
         String advice = RegimeRule.mapPositionAdvice(regime);
-        String report = buildFallbackReport(regime, advice, ind);
+
+        String report;
+        try {
+            report = generateReport(regime, advice, ind);
+        } catch (Exception e) {
+            log.error("AI 总结失败，降级为量化结论: {}", e.getMessage());
+            report = buildFallbackReport(regime, advice, ind);
+        }
 
         MarketRegimeRecord record = new MarketRegimeRecord();
         record.setDate(LocalDate.now().toString());

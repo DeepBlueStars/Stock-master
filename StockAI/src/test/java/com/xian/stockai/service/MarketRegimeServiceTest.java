@@ -23,6 +23,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -119,6 +120,27 @@ class MarketRegimeServiceTest {
         Result<MarketRegimeRecord> result = service.evaluateAndSave();
 
         assertTrue(result.checkSuccess());
+        verify(marketRegimeRecordRepository).save(any(MarketRegimeRecord.class));
+    }
+
+    @Test
+    void evaluateAndSaveFallsBackWhenAiFails() {
+        when(indexDailyQuotesRepository.findTop250ByIndexCodeOrderByTradeDateDesc("sh000300"))
+                .thenReturn(trendingQuotes());
+        when(indexValuationRepository.findTopByIndexCodeOrderByTradeDateDesc("sh000300")).thenReturn(null);
+        when(feishuProvider.getIfAvailable()).thenReturn(null);
+
+        ChatClient.ChatClientRequestSpec spec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.CallResponseSpec callSpec = mock(ChatClient.CallResponseSpec.class);
+        when(chatClient.prompt()).thenReturn(spec);
+        when(spec.user(anyString())).thenReturn(spec);
+        when(spec.call()).thenReturn(callSpec);
+        when(callSpec.content()).thenThrow(new RuntimeException("AI down"));
+
+        Result<MarketRegimeRecord> result = service.evaluateAndSave();
+
+        assertTrue(result.checkSuccess());
+        assertTrue(result.getData().getReport().contains("量化结论"));
         verify(marketRegimeRecordRepository).save(any(MarketRegimeRecord.class));
     }
 }
