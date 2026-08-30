@@ -74,34 +74,34 @@ class BaostockSource(DataSource):
         bs = self._ensure_login()
         bs_code = self._bs_code(code)
         year = datetime.now().year
-        rs_profit = bs.query_profit_data(code=bs_code, year=year, quarter=1)
-        if rs_profit.error_code != "0":
-            logger.warning("baostock %s 财务指标查询失败: %s", bs_code, rs_profit.error_msg)
-            return None
         profit_rows = []
-        while rs_profit.next():
-            profit_rows.append(rs_profit.get_row_data())
+        growth_rows = []
+        for quarter in (1, 2, 3, 4):
+            rs_profit = bs.query_profit_data(code=bs_code, year=year, quarter=quarter)
+            if rs_profit.error_code == "0":
+                while rs_profit.next():
+                    profit_rows.append(dict(zip(rs_profit.fields, rs_profit.get_row_data())))
+            rs_growth = bs.query_growth_data(code=bs_code, year=year, quarter=quarter)
+            if rs_growth.error_code == "0":
+                while rs_growth.next():
+                    growth_rows.append(dict(zip(rs_growth.fields, rs_growth.get_row_data())))
         if not profit_rows:
             return None
-        last = dict(zip(rs_profit.fields, profit_rows[-1]))  # 取最新一期
-        profit_yoy = 0.0
-        rs_growth = bs.query_growth_data(code=bs_code, year=year, quarter=1)
-        if rs_growth.error_code == "0":
-            growth_rows = []
-            while rs_growth.next():
-                growth_rows.append(rs_growth.get_row_data())
-            if growth_rows:
-                g = dict(zip(rs_growth.fields, growth_rows[-1]))
-                profit_yoy = to_float(g.get("YOYNI"))
-        return [Fundamental(
-            symbol=code,
-            report_date=to_date(last.get("statDate")),
-            pe=0.0,
-            pb=0.0,
-            roe=to_float(last.get("roeAvg")),
-            revenue_yoy=0.0,
-            profit_yoy=profit_yoy,
-            gross_margin=to_float(last.get("gpMargin")),
-            data_source=self.name,
-            updated_at=datetime.now(),
-        ).to_dict()]
+        growth_by_stat = {g.get("statDate"): g for g in growth_rows}
+        now = datetime.now()
+        out = []
+        for p in profit_rows:
+            g = growth_by_stat.get(p.get("statDate"), {})
+            out.append(Fundamental(
+                symbol=code,
+                report_date=to_date(p.get("statDate")),
+                pe=0.0,
+                pb=0.0,
+                roe=to_float(p.get("roeAvg")),
+                revenue_yoy=0.0,
+                profit_yoy=to_float(g.get("YOYNI")),
+                gross_margin=to_float(p.get("gpMargin")),
+                data_source=self.name,
+                updated_at=now,
+            ).to_dict())
+        return out

@@ -53,3 +53,43 @@ def test_fetch_fundamentals_maps_standard_format():
     assert f["roe"] == 8.0
     assert f["gross_margin"] == 30.0
     assert f["profit_yoy"] == 15.0
+
+
+def test_fetch_fundamentals_iterates_report_periods():
+    src = BaostockSource()
+    src._bs = MagicMock()
+
+    def profit(code=None, year=None, quarter=None):
+        if quarter == 1:
+            return _Rs(["code", "pubDate", "statDate", "roeAvg", "gpMargin"],
+                       [["sh.600000", "2024-04-01", "2024-03-31", "8.0", "30.0"]])
+        if quarter == 2:
+            return _Rs(["code", "pubDate", "statDate", "roeAvg", "gpMargin"],
+                       [["sh.600000", "2024-07-01", "2024-06-30", "9.0", "31.0"]])
+        return _Rs(["code", "pubDate", "statDate", "roeAvg", "gpMargin"], [])
+
+    def growth(code=None, year=None, quarter=None):
+        if quarter == 1:
+            return _Rs(["code", "statDate", "YOYNI"], [["sh.600000", "2024-03-31", "15.0"]])
+        if quarter == 2:
+            return _Rs(["code", "statDate", "YOYNI"], [["sh.600000", "2024-06-30", "16.0"]])
+        return _Rs(["code", "statDate", "YOYNI"], [])
+
+    src._bs.query_profit_data.side_effect = profit
+    src._bs.query_growth_data.side_effect = growth
+    out = src.fetch_fundamentals("600000")
+    by_date = {f["report_date"]: f for f in out}
+    assert sorted(by_date) == ["2024-03-31", "2024-06-30"]
+    assert by_date["2024-06-30"]["profit_yoy"] == 16.0
+
+
+def test_fetch_daily_uses_unadjusted_adjustflag():
+    src = BaostockSource()
+    src._bs = MagicMock()
+    src._bs.query_history_k_data_plus.return_value = _Rs(
+        ["date", "open", "high", "low", "close", "volume", "amount"],
+        [["2024-01-02", "10.0", "11.0", "9.8", "10.5", "1000", "10500.0"]],
+    )
+    src.fetch_stock_daily("000001")
+    kwargs = src._bs.query_history_k_data_plus.call_args.kwargs
+    assert kwargs["adjustflag"] == "3"

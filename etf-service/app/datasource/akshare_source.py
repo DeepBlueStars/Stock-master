@@ -93,13 +93,17 @@ class AkshareSource(DataSource):
         if df_fin is None or df_fin.empty:
             return None
         now = self._now()
-        out = []
+        rows = []
         for _, r in df_fin.iterrows():
+            rows.append((to_date(row_get(r, "日期", "报告期", "报告日", "date")), r))
+        latest_report = max((rd for rd, _ in rows), default="")
+        out = []
+        for report_date, r in rows:
             out.append(Fundamental(
                 symbol=code,
-                report_date=to_date(row_get(r, "日期", "报告期", "报告日", "date")),
-                pe=pe,
-                pb=pb,
+                report_date=report_date,
+                pe=pe if report_date == latest_report else 0.0,
+                pb=pb if report_date == latest_report else 0.0,
                 roe=to_float(row_get(r, "净资产收益率(%)", "净资产收益率", "roe")),
                 revenue_yoy=to_float(row_get(r, "主营业务收入增长率(%)", "营业收入同比增长率", "revenue_yoy")),
                 profit_yoy=to_float(row_get(r, "净利润增长率(%)", "净利润同比增长率", "profit_yoy")),

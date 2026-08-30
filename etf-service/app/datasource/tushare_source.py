@@ -29,6 +29,8 @@ class TushareSource(DataSource):
         code = code.upper()
         if code.endswith((".SH", ".SZ", ".BJ")):
             return code
+        if code.startswith(("SH", "SZ")):
+            return code[2:] + "." + code[:2]
         return code + (".SH" if code.startswith("6") else ".SZ")
 
     def fetch_index_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
@@ -56,7 +58,7 @@ class TushareSource(DataSource):
         out = []
         for _, r in df.iterrows():
             out.append(DailyQuote(
-                symbol=code[-6:],
+                symbol=code,
                 trade_date=to_date(row_get(r, "trade_date")),
                 open=to_float(row_get(r, "open")),
                 high=to_float(row_get(r, "high")),
@@ -92,13 +94,17 @@ class TushareSource(DataSource):
         if df_fin is None or df_fin.empty:
             return None
         now = datetime.now()
-        out = []
+        rows = []
         for _, r in df_fin.iterrows():
+            rows.append((to_date(row_get(r, "end_date", "ann_date")), r))
+        latest_report = max((rd for rd, _ in rows), default="")
+        out = []
+        for report_date, r in rows:
             out.append(Fundamental(
-                symbol=code[-6:],
-                report_date=to_date(row_get(r, "end_date", "ann_date")),
-                pe=pe,
-                pb=pb,
+                symbol=code,
+                report_date=report_date,
+                pe=pe if report_date == latest_report else 0.0,
+                pb=pb if report_date == latest_report else 0.0,
                 roe=to_float(row_get(r, "roe")),
                 revenue_yoy=to_float(row_get(r, "q_sales_yoy", "revenue_yoy")),
                 profit_yoy=to_float(row_get(r, "q_profit_yoy", "profit_yoy")),
