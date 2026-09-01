@@ -1,0 +1,14 @@
+{
+  "change": "market-regime",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "3c1a70ca17b135ec662bed674ceda3d5f338e859c5c8fcdb780769c6d748c8c2",
+  "files": [
+    { "path": "docs/openspec/changes/market-regime/proposal.md", "sha256": "db1d3b7914c57010a629f8abbc7e4c298bf87289d39269b40b0d8fba035a5495" },
+    { "path": "docs/openspec/changes/market-regime/design.md", "sha256": "83f5185354167095389272aea319ea550987d670ea510e89b2fb1974e4778be4" },
+    { "path": "docs/openspec/changes/market-regime/tasks.md", "sha256": "297f9b25c360f1214604cc0ff8b7446e0a85028caeb45ef62409d7f7a22c7e8f" },
+    { "path": "docs/openspec/changes/market-regime/specs/market-regime/spec.md", "sha256": "9f3c482f23bf9bdaa552a3b66f5cfc8fd6ea83ac774c7143a2087dc406b6ec73" }
+  ]
+}

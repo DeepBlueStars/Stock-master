@@ -2,6 +2,7 @@
 change: market-regime
 design-doc: docs/superpowers/specs/2026-08-30-market-regime-design.md
 base-ref: b311f2205475f2002561d5f63d20c4c28231aba1
+archived-with: 2026-09-01-market-regime
 ---
 
 # 市场温度计（market-regime）实施计划
