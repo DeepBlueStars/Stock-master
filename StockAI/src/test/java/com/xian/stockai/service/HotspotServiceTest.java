@@ -1,0 +1,207 @@
+package com.xian.stockai.service;
+
+import com.xian.stockai.dao.HotspotResultRepository;
+import com.xian.stockai.dao.IndexConstituentsRepository;
+import com.xian.stockai.dao.ScreeningScoreRecordRepository;
+import com.xian.stockai.dao.StockDailyKlineRepository;
+import com.xian.stockai.dao.StockIndustryConceptRepository;
+import com.xian.stockai.po.HotspotDirection;
+import com.xian.stockai.po.HotspotResult;
+import com.xian.stockai.po.IndexConstituents;
+import com.xian.stockai.po.ScreeningScoreRecord;
+import com.xian.stockai.po.StockDailyKline;
+import com.xian.stockai.po.StockFactor;
+import com.xian.stockai.po.StockIndustryConcept;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class HotspotServiceTest {
+
+    @Mock
+    private IndexConstituentsRepository indexConstituentsRepository;
+    @Mock
+    private StockIndustryConceptRepository stockIndustryConceptRepository;
+    @Mock
+    private StockDailyKlineRepository stockDailyKlineRepository;
+    @Mock
+    private ScreeningScoreRecordRepository screeningScoreRecordRepository;
+    @Mock
+    private HotspotResultRepository hotspotResultRepository;
+
+    private HotspotService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new HotspotService(indexConstituentsRepository, stockIndustryConceptRepository,
+                stockDailyKlineRepository, screeningScoreRecordRepository, hotspotResultRepository);
+    }
+
+    /** 6 条降序 K 线：最新 close=latest，其余 close=base，amount 恒定。 */
+    private List<StockDailyKline> flatKlines(String symbol, String base, String latest, String amount) {
+        List<StockDailyKline> list = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            StockDailyKline k = new StockDailyKline();
+            k.setSymbol(symbol);
+            k.setTradeDate(LocalDate.of(2026, 9, 1).minusDays(i).toString());
+            k.setClose(i == 0 ? new BigDecimal(latest) : new BigDecimal(base));
+            k.setAmount(new BigDecimal(amount));
+            list.add(k);
+        }
+        return list;
+    }
+
+    private StockIndustryConcept industry(String symbol, String industry, List<String> concepts) {
+        StockIndustryConcept ic = new StockIndustryConcept();
+        ic.setSymbol(symbol);
+        ic.setIndustry(industry);
+        ic.setConcepts(concepts);
+        return ic;
+    }
+
+    private StockFactor factor(String symbol, Integer quality) {
+        StockFactor f = new StockFactor();
+        f.setSymbol(symbol);
+        f.setName(symbol + "名称");
+        f.setQuality(quality);
+        return f;
+    }
+
+    private void mockPool() {
+        when(indexConstituentsRepository.findAll()).thenReturn(List.of(
+                constituent("A"), constituent("B"), constituent("C"),
+                constituent("D"), constituent("E"),
+                constituent("F"), constituent("G"), constituent("H")));
+        when(stockIndustryConceptRepository.findBySymbol("A"))
+                .thenReturn(industry("A", "白酒", List.of("消费")));
+        when(stockIndustryConceptRepository.findBySymbol("B"))
+                .thenReturn(industry("B", "白酒", List.of("消费")));
+        when(stockIndustryConceptRepository.findBySymbol("C"))
+                .thenReturn(industry("C", "白酒", List.of("消费")));
+        when(stockIndustryConceptRepository.findBySymbol("D"))
+                .thenReturn(industry("D", "银行", List.of("科技")));
+        when(stockIndustryConceptRepository.findBySymbol("E"))
+                .thenReturn(industry("E", "银行", List.of("科技")));
+        when(stockIndustryConceptRepository.findBySymbol("F"))
+                .thenReturn(industry("F", "医药", List.of()));
+        when(stockIndustryConceptRepository.findBySymbol("G"))
+                .thenReturn(industry("G", "医药", List.of()));
+        when(stockIndustryConceptRepository.findBySymbol("H"))
+                .thenReturn(industry("H", "医药", List.of()));
+        // 成交额：A=100000 B=50000 C=30000 D=20000 E=10000 F=150000 G=60000 H=40000（全池 460000）
+        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("A"))
+                .thenReturn(flatKlines("A", "10", "11", "100000"));   // 涨停 0.1
+        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("B"))
+                .thenReturn(flatKlines("B", "10", "10.5", "50000"));
+        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("C"))
+                .thenReturn(flatKlines("C", "10", "10.2", "30000"));
+        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("D"))
+                .thenReturn(flatKlines("D", "10", "10.1", "20000"));
+        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("E"))
+                .thenReturn(flatKlines("E", "10", "9.9", "10000"));
+        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("F"))
+                .thenReturn(flatKlines("F", "10", "12", "150000"));   // 涨停 0.2
+        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("G"))
+                .thenReturn(flatKlines("G", "10", "10.5", "60000"));
+        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("H"))
+                .thenReturn(flatKlines("H", "10", "10.1", "40000"));
+
+        ScreeningScoreRecord snapshot = new ScreeningScoreRecord();
+        snapshot.setTradeDate("2026-09-01");
+        snapshot.setStocks(List.of(
+                factor("A", 50), factor("B", 70), factor("C", 90),
+                factor("D", 60), factor("E", 30),
+                factor("F", 30), factor("G", 35), factor("H", 38)));
+        when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(snapshot);
+    }
+
+    private IndexConstituents constituent(String symbol) {
+        IndexConstituents c = new IndexConstituents();
+        c.setSymbol(symbol);
+        return c;
+    }
+
+    @Test
+    void buildAndSaveAggregatesIndustryAndFiltersSmallDirections() {
+        mockPool();
+        HotspotResult result = service.buildAndSave("2026-09-01");
+        assertNotNull(result);
+        // 行业维度：白酒(A,B,C)、医药(F,G,H) 保留；银行(D,E) 仅 2 只 → 过滤
+        assertEquals(2, result.getIndustries().size());
+        // 概念维度：消费(A,B,C) 保留；科技(D,E) 仅 2 只 → 过滤
+        assertEquals(1, result.getConcepts().size());
+        verify(hotspotResultRepository).save(result);
+    }
+
+    @Test
+    void buildAndSaveComputesDirectionMetrics() {
+        mockPool();
+        HotspotResult result = service.buildAndSave("2026-09-01");
+        HotspotDirection medicine = result.getIndustries().stream()
+                .filter(d -> "医药".equals(d.getName())).findFirst().orElseThrow();
+        // 医药：dailyAvgChange = (0.2+0.05+0.01)/3 = 0.086667
+        assertEquals(0, new BigDecimal("0.086667").compareTo(medicine.getDailyAvgChange()));
+        // 医药成交额占比 = 250000/460000 = 0.543478
+        assertEquals(0, new BigDecimal("0.543478").compareTo(medicine.getDailyAmountRatio()));
+        assertEquals(1, medicine.getLimitUpCount()); // F 涨停
+        assertEquals(3, medicine.getStockCount());
+        assertEquals(1, medicine.getFiveDayLimitUpCount()); // F 5日内有涨停
+    }
+
+    @Test
+    void buildAndSaveRanksByHotScore() {
+        mockPool();
+        HotspotResult result = service.buildAndSave("2026-09-01");
+        // 行业维度 2 个方向：医药各指标均高于白酒 → 医药热度 80、白酒 0
+        HotspotDirection top = result.getIndustries().get(0);
+        assertEquals("医药", top.getName());
+        assertEquals(80, top.getHotScore());
+        assertEquals(0, result.getIndustries().get(1).getHotScore());
+    }
+
+    @Test
+    void buildAndSavePicksRepresentativeStocks() {
+        mockPool();
+        HotspotResult result = service.buildAndSave("2026-09-01");
+        HotspotDirection medicine = result.getIndustries().stream()
+                .filter(d -> "医药".equals(d.getName())).findFirst().orElseThrow();
+        assertEquals(3, medicine.getTopStocks().size());
+        // 按 单日涨幅+5日涨幅 降序：F(0.4) > G(0.1) > H(0.02)
+        assertEquals("F", medicine.getTopStocks().get(0).getSymbol());
+        assertEquals("G", medicine.getTopStocks().get(1).getSymbol());
+        assertEquals("H", medicine.getTopStocks().get(2).getSymbol());
+    }
+
+    @Test
+    void buildAndSaveUpsertsByTradeDate() {
+        mockPool();
+        HotspotResult existing = new HotspotResult();
+        existing.setId("existing-id");
+        when(hotspotResultRepository.findByTradeDate("2026-09-01")).thenReturn(existing);
+        HotspotResult result = service.buildAndSave("2026-09-01");
+        ArgumentCaptor<HotspotResult> captor = ArgumentCaptor.forClass(HotspotResult.class);
+        verify(hotspotResultRepository).save(captor.capture());
+        assertEquals("existing-id", captor.getValue().getId());
+        assertEquals("2026-09-01", result.getTradeDate());
+    }
+
+    @Test
+    void buildAndSaveReturnsNullWhenSnapshotMissing() {
+        when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(null);
+        assertNull(service.buildAndSave("2026-09-01"));
+    }
+}

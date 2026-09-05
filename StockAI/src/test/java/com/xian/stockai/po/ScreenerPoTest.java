@@ -1,5 +1,8 @@
 package com.xian.stockai.po;
 
+import com.xian.stockai.po.HotspotDirection;
+import com.xian.stockai.po.HotspotResult;
+import com.xian.stockai.po.HotspotStock;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -107,5 +110,33 @@ class ScreenerPoTest {
                 .getAnnotation(Indexed.class);
         assertNotNull(indexed);
         assertTrue(indexed.unique());
+    }
+
+    @Test
+    void hotspotPosMapCollectionAndFields() throws NoSuchFieldException {
+        Document doc = HotspotResult.class.getAnnotation(Document.class);
+        assertNotNull(doc);
+        assertEquals("hotspot_results", doc.collection());
+        assertEquals("trade_date", fieldName(HotspotResult.class, "tradeDate"));
+        assertEquals("generated_at", fieldName(HotspotResult.class, "generatedAt"));
+        assertEquals("industries", fieldName(HotspotResult.class, "industries"));
+        assertEquals("concepts", fieldName(HotspotResult.class, "concepts"));
+        Indexed indexed = HotspotResult.class.getDeclaredField("tradeDate")
+                .getAnnotation(Indexed.class);
+        assertNotNull(indexed);
+        assertTrue(indexed.unique());
+        assertEquals("hot_score", fieldName(HotspotDirection.class, "hotScore"));
+        assertEquals("daily_avg_change", fieldName(HotspotDirection.class, "dailyAvgChange"));
+        assertEquals("daily_amount_ratio", fieldName(HotspotDirection.class, "dailyAmountRatio"));
+        assertEquals("limit_up_count", fieldName(HotspotDirection.class, "limitUpCount"));
+        assertEquals("five_day_avg_change", fieldName(HotspotDirection.class, "fiveDayAvgChange"));
+        assertEquals("five_day_amount_ratio", fieldName(HotspotDirection.class, "fiveDayAmountRatio"));
+        assertEquals("five_day_limit_up_count", fieldName(HotspotDirection.class, "fiveDayLimitUpCount"));
+        assertEquals("stock_count", fieldName(HotspotDirection.class, "stockCount"));
+        assertEquals("hype_label", fieldName(HotspotDirection.class, "hypeLabel"));
+        assertEquals("hype_basis", fieldName(HotspotDirection.class, "hypeBasis"));
+        assertEquals("top_stocks", fieldName(HotspotDirection.class, "topStocks"));
+        assertEquals("daily_change", fieldName(HotspotStock.class, "dailyChange"));
+        assertEquals("five_day_change", fieldName(HotspotStock.class, "fiveDayChange"));
     }
 }
