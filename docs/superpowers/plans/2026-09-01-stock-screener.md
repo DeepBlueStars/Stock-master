@@ -3231,7 +3231,7 @@ public class ScreeningReportService {
 }
 ```
 
-- [ ] **Step 5: 运行测试确认通过（Task 7）**
+- [x] **Step 5: 运行测试确认通过（Task 7）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningReportServiceTest,ScreenerPoTest`
 Expected: PASS
@@ -3241,7 +3241,7 @@ Expected: PASS
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
 
-- [ ] **Step 7: Commit（Task 7）**
+- [x] **Step 7: Commit（Task 7）**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/po/ScreeningResult.java \
