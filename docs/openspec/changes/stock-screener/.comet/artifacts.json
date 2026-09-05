@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "docs/openspec/changes/stock-screener/proposal.md",
+  "openspec_design": "docs/openspec/changes/stock-screener/design.md",
+  "openspec_tasks": "docs/openspec/changes/stock-screener/tasks.md",
+  "openspec_delta_spec": "docs/openspec/changes/stock-screener/specs/hotspot-analysis/spec.md",
+  "handoff_context": "docs/openspec/changes/stock-screener/.comet/handoff/design-context.json",
+  "handoff_markdown": "docs/openspec/changes/stock-screener/.comet/handoff/design-context.md"
+}
