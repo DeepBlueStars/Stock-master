@@ -2,11 +2,13 @@ package com.xian.stockai.service;
 
 import com.xian.stockai.config.ScreeningProperties;
 import com.xian.stockai.dao.IndexConstituentsRepository;
+import com.xian.stockai.dao.ScreeningScoreRecordRepository;
 import com.xian.stockai.dao.StockBasicInfoRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockFundamentalsRepository;
 import com.xian.stockai.po.BoardEntry;
 import com.xian.stockai.po.IndexConstituents;
+import com.xian.stockai.po.ScreeningScoreRecord;
 import com.xian.stockai.po.StockBasicInfo;
 import com.xian.stockai.po.StockDailyKline;
 import com.xian.stockai.po.StockFactor;
@@ -14,6 +16,7 @@ import com.xian.stockai.po.StockFundamentals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,6 +31,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,13 +45,16 @@ class ScreeningServiceTest {
     private StockDailyKlineRepository stockDailyKlineRepository;
     @Mock
     private StockBasicInfoRepository stockBasicInfoRepository;
+    @Mock
+    private ScreeningScoreRecordRepository screeningScoreRecordRepository;
 
     private ScreeningService service;
 
     @BeforeEach
     void setUp() {
         service = new ScreeningService(indexConstituentsRepository, stockFundamentalsRepository,
-                stockDailyKlineRepository, stockBasicInfoRepository, new ScreeningProperties());
+                stockDailyKlineRepository, stockBasicInfoRepository, new ScreeningProperties(),
+                screeningScoreRecordRepository);
     }
 
     private IndexConstituents constituent(String symbol) {
@@ -301,5 +308,66 @@ class ScreeningServiceTest {
         assertEquals(new BigDecimal("0.40"), props.weightsOf("growth").get("growth"));
         assertEquals(new BigDecimal("0.25"), props.weightsOf("balanced").get("valuation"));
         assertEquals(new BigDecimal("0.30"), props.weightsOf("balanced").get("quality"));
+    }
+
+    // ==== Task 4: 长期评级与快照入库 ====
+
+    @Test
+    void rateLongTermThresholds() {
+        // 65 边界：0.6*65+0.4*65 = 65 → HIGH
+        assertEquals(ScreeningService.RATING_HIGH,
+                ScreeningService.rateLongTerm(factor("A", null, 65, 65, null)));
+        // 45 边界：0.6*45+0.4*45 = 45 → MEDIUM
+        assertEquals(ScreeningService.RATING_MEDIUM,
+                ScreeningService.rateLongTerm(factor("B", null, 45, 45, null)));
+        // 低于 45：0.6*44+0.4*46 = 44.8 → LOW（factor 第 3 参为 growth、第 4 参为 quality）
+        assertEquals(ScreeningService.RATING_LOW,
+                ScreeningService.rateLongTerm(factor("C", null, 46, 44, null)));
+        // 组合：0.6*60+0.4*30 = 48 → MEDIUM
+        assertEquals(ScreeningService.RATING_MEDIUM,
+                ScreeningService.rateLongTerm(factor("D", null, 30, 60, null)));
+    }
+
+    @Test
+    void rateLongTermFallsBackToSingleFactor() {
+        assertEquals(ScreeningService.RATING_HIGH,
+                ScreeningService.rateLongTerm(factor("A", null, 70, null, null)));
+        assertEquals(ScreeningService.RATING_LOW,
+                ScreeningService.rateLongTerm(factor("B", null, null, 40, null)));
+        assertEquals(ScreeningService.RATING_UNKNOWN,
+                ScreeningService.rateLongTerm(factor("C", null, null, null, null)));
+    }
+
+    @Test
+    void calculateAndSaveSnapshotFillsRatingsAndUpserts() {
+        mockStandardPool();
+        when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(null);
+        List<StockFactor> factors = service.calculateAndSaveSnapshot("2026-09-01");
+        ArgumentCaptor<ScreeningScoreRecord> captor =
+                ArgumentCaptor.forClass(ScreeningScoreRecord.class);
+        verify(screeningScoreRecordRepository).save(captor.capture());
+        ScreeningScoreRecord saved = captor.getValue();
+        assertEquals("2026-09-01", saved.getTradeDate());
+        assertNotNull(saved.getGeneratedAt());
+        assertEquals(5, saved.getStocks().size());
+        Map<String, StockFactor> bySymbol = factors.stream()
+                .collect(Collectors.toMap(StockFactor::getSymbol, Function.identity()));
+        // A：quality=100、growth=100 → 100 → HIGH；B：quality=0、growth=0 → LOW；E：财务超期 → UNKNOWN
+        assertEquals(ScreeningService.RATING_HIGH, bySymbol.get("A").getLongTermRating());
+        assertEquals(ScreeningService.RATING_LOW, bySymbol.get("B").getLongTermRating());
+        assertEquals(ScreeningService.RATING_UNKNOWN, bySymbol.get("E").getLongTermRating());
+    }
+
+    @Test
+    void calculateAndSaveSnapshotReusesExistingIdOnSameDay() {
+        mockStandardPool();
+        ScreeningScoreRecord existing = new ScreeningScoreRecord();
+        existing.setId("existing-id");
+        when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(existing);
+        service.calculateAndSaveSnapshot("2026-09-01");
+        ArgumentCaptor<ScreeningScoreRecord> captor =
+                ArgumentCaptor.forClass(ScreeningScoreRecord.class);
+        verify(screeningScoreRecordRepository).save(captor.capture());
+        assertEquals("existing-id", captor.getValue().getId());
     }
 }

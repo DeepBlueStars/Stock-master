@@ -2,11 +2,13 @@ package com.xian.stockai.service;
 
 import com.xian.stockai.config.ScreeningProperties;
 import com.xian.stockai.dao.IndexConstituentsRepository;
+import com.xian.stockai.dao.ScreeningScoreRecordRepository;
 import com.xian.stockai.dao.StockBasicInfoRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockFundamentalsRepository;
 import com.xian.stockai.po.BoardEntry;
 import com.xian.stockai.po.IndexConstituents;
+import com.xian.stockai.po.ScreeningScoreRecord;
 import com.xian.stockai.po.StockBasicInfo;
 import com.xian.stockai.po.StockDailyKline;
 import com.xian.stockai.po.StockFactor;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,6 +35,11 @@ public class ScreeningService {
     public static final String STYLE_GROWTH = "growth";
     public static final String STYLE_BALANCED = "balanced";
 
+    public static final String RATING_HIGH = "HIGH";
+    public static final String RATING_MEDIUM = "MEDIUM";
+    public static final String RATING_LOW = "LOW";
+    public static final String RATING_UNKNOWN = "UNKNOWN";
+
     private static final int MOMENTUM_BARS = 21;
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final BigDecimal VALUATION_PE_WEIGHT = new BigDecimal("0.5");
@@ -40,6 +48,8 @@ public class ScreeningService {
     private static final BigDecimal GROWTH_PROFIT_WEIGHT = new BigDecimal("0.5");
     private static final BigDecimal QUALITY_ROE_WEIGHT = new BigDecimal("0.6");
     private static final BigDecimal QUALITY_GM_WEIGHT = new BigDecimal("0.4");
+    private static final BigDecimal LONG_TERM_QUALITY_WEIGHT = new BigDecimal("0.6");
+    private static final BigDecimal LONG_TERM_GROWTH_WEIGHT = new BigDecimal("0.4");
 
     private static final int TOP_N = 20;
 
@@ -48,17 +58,20 @@ public class ScreeningService {
     private final StockDailyKlineRepository stockDailyKlineRepository;
     private final StockBasicInfoRepository stockBasicInfoRepository;
     private final ScreeningProperties screeningProperties;
+    private final ScreeningScoreRecordRepository screeningScoreRecordRepository;
 
     public ScreeningService(IndexConstituentsRepository indexConstituentsRepository,
                             StockFundamentalsRepository stockFundamentalsRepository,
                             StockDailyKlineRepository stockDailyKlineRepository,
                             StockBasicInfoRepository stockBasicInfoRepository,
-                            ScreeningProperties screeningProperties) {
+                            ScreeningProperties screeningProperties,
+                            ScreeningScoreRecordRepository screeningScoreRecordRepository) {
         this.indexConstituentsRepository = indexConstituentsRepository;
         this.stockFundamentalsRepository = stockFundamentalsRepository;
         this.stockDailyKlineRepository = stockDailyKlineRepository;
         this.stockBasicInfoRepository = stockBasicInfoRepository;
         this.screeningProperties = screeningProperties;
+        this.screeningScoreRecordRepository = screeningScoreRecordRepository;
     }
 
     /**
@@ -274,6 +287,53 @@ public class ScreeningService {
             parts.add("20 日涨幅池内前 " + (100 - f.getMomentumPct()) + "%");
         }
         return String.join("，", parts);
+    }
+
+    /**
+     * 长期价值评级：质量 60% + 成长 40%，任一缺失用另一方 100%，均缺失 → UNKNOWN。
+     */
+    public static String rateLongTerm(StockFactor f) {
+        Integer q = f.getQuality();
+        Integer g = f.getGrowth();
+        if (q == null && g == null) {
+            return RATING_UNKNOWN;
+        }
+        BigDecimal score;
+        if (q == null) {
+            score = BigDecimal.valueOf(g);
+        } else if (g == null) {
+            score = BigDecimal.valueOf(q);
+        } else {
+            score = BigDecimal.valueOf(q).multiply(LONG_TERM_QUALITY_WEIGHT)
+                    .add(BigDecimal.valueOf(g).multiply(LONG_TERM_GROWTH_WEIGHT));
+        }
+        if (score.compareTo(new BigDecimal("65")) >= 0) {
+            return RATING_HIGH;
+        }
+        if (score.compareTo(new BigDecimal("45")) >= 0) {
+            return RATING_MEDIUM;
+        }
+        return RATING_LOW;
+    }
+
+    /**
+     * 计算因子 + 填充长期评级 + 全量快照 upsert 入库（screening_scores）。
+     */
+    public List<StockFactor> calculateAndSaveSnapshot(String tradeDate) {
+        List<StockFactor> factors = calculateFactors(tradeDate);
+        for (StockFactor f : factors) {
+            f.setLongTermRating(rateLongTerm(f));
+        }
+        ScreeningScoreRecord record = screeningScoreRecordRepository.findByTradeDate(tradeDate);
+        if (record == null) {
+            record = new ScreeningScoreRecord();
+        }
+        record.setTradeDate(tradeDate);
+        record.setGeneratedAt(LocalDateTime.now());
+        record.setStocks(factors);
+        screeningScoreRecordRepository.save(record);
+        log.info("选股快照已入库: tradeDate={}, 股票数={}", tradeDate, factors.size());
+        return factors;
     }
 
     private static int countMissing(StockFactor f) {

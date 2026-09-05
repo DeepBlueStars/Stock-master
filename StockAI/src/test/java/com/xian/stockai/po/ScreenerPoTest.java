@@ -94,4 +94,18 @@ class ScreenerPoTest {
         assertEquals("index_name", fieldName(IndexConstituents.class, "indexName"));
         assertEquals("symbol", fieldName(IndexConstituents.class, "symbol"));
     }
+
+    @Test
+    void screeningScoreRecordMapsCollectionAndFields() throws NoSuchFieldException {
+        Document doc = ScreeningScoreRecord.class.getAnnotation(Document.class);
+        assertNotNull(doc);
+        assertEquals("screening_scores", doc.collection());
+        assertEquals("trade_date", fieldName(ScreeningScoreRecord.class, "tradeDate"));
+        assertEquals("generated_at", fieldName(ScreeningScoreRecord.class, "generatedAt"));
+        assertEquals("stocks", fieldName(ScreeningScoreRecord.class, "stocks"));
+        Indexed indexed = ScreeningScoreRecord.class.getDeclaredField("tradeDate")
+                .getAnnotation(Indexed.class);
+        assertNotNull(indexed);
+        assertTrue(indexed.unique());
+    }
 }
