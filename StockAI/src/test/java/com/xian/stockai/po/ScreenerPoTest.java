@@ -139,4 +139,22 @@ class ScreenerPoTest {
         assertEquals("daily_change", fieldName(HotspotStock.class, "dailyChange"));
         assertEquals("five_day_change", fieldName(HotspotStock.class, "fiveDayChange"));
     }
+
+    @Test
+    void screeningResultMapsCollectionAndFields() throws NoSuchFieldException {
+        Document doc = ScreeningResult.class.getAnnotation(Document.class);
+        assertNotNull(doc);
+        assertEquals("screening_results", doc.collection());
+        assertEquals("trade_date", fieldName(ScreeningResult.class, "tradeDate"));
+        assertEquals("generated_at", fieldName(ScreeningResult.class, "generatedAt"));
+        assertEquals("value", fieldName(ScreeningResult.class, "valueBoard"));
+        assertEquals("growth", fieldName(ScreeningResult.class, "growthBoard"));
+        assertEquals("balanced", fieldName(ScreeningResult.class, "balancedBoard"));
+        assertEquals("ai_report", fieldName(ScreeningResult.class, "aiReport"));
+        assertEquals("ai_report_status", fieldName(ScreeningResult.class, "aiReportStatus"));
+        Indexed indexed = ScreeningResult.class.getDeclaredField("tradeDate")
+                .getAnnotation(Indexed.class);
+        assertNotNull(indexed);
+        assertTrue(indexed.unique());
+    }
 }
