@@ -1526,7 +1526,7 @@ git commit -m "feat: 实现三风格综合评分加权合成与 Top20 候选榜"
 
 **评级规则（设计文档）：** 长期价值分 = 质量分 × 60% + 成长分 × 40%（任一缺失用另一方 100%；两者均缺失 → UNKNOWN）；≥65 → HIGH；45~65 → MEDIUM；<45 → LOW。
 
-- [ ] **Step 1: 写失败的测试（Task 4）**
+- [x] **Step 1: 写失败的测试（Task 4）**
 
 在 `ScreenerPoTest.java` 追加：
 
@@ -1629,7 +1629,7 @@ setUp 最终形态：
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningServiceTest,ScreenerPoTest`
 Expected: COMPILATION ERROR（`ScreeningScoreRecord` 不存在）
 
-- [ ] **Step 3: 创建 ScreeningScoreRecord 与 Repository（Task 4）**
+- [x] **Step 3: 创建 ScreeningScoreRecord 与 Repository（Task 4）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/po/ScreeningScoreRecord.java`：
 
@@ -1693,7 +1693,7 @@ public interface ScreeningScoreRecordRepository extends MongoRepository<Screenin
 }
 ```
 
-- [ ] **Step 4: 扩展 ScreeningService（评级 + 快照）（Task 4）**
+- [x] **Step 4: 扩展 ScreeningService（评级 + 快照）（Task 4）**
 
 在 `ScreeningService.java` 中：
 1. import 增加 `com.xian.stockai.dao.ScreeningScoreRecordRepository`、`com.xian.stockai.po.ScreeningScoreRecord`、`java.time.LocalDateTime`。
@@ -1786,7 +1786,7 @@ Expected: PASS
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
 
-- [ ] **Step 7: Commit（Task 4）**
+- [x] **Step 7: Commit（Task 4）**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/po/ScreeningScoreRecord.java \
