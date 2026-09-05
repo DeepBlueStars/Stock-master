@@ -47,7 +47,37 @@ async function fetchLatest() {
   }
 }
 
-onMounted(fetchLatest)
+const hotspotLoading = ref(false)
+const hotspot = ref(null)
+
+const HYPE_LABEL = { SUPPORTED: '有基本面支撑', NEUTRAL: '中性', HYPE_RISK: '纯炒作风险高' }
+const HYPE_TYPE = { SUPPORTED: 'success', NEUTRAL: 'info', HYPE_RISK: 'danger' }
+
+const hypeText = (label) => HYPE_LABEL[label] || '中性'
+const hypeType = (label) => HYPE_TYPE[label] || 'info'
+const pctText = (value) => value == null ? '-' : ((value * 100).toFixed(2) + '%')
+
+async function fetchHotspot() {
+  hotspotLoading.value = true
+  try {
+    const response = await axios.post(`${BASE_URL}/hotspot/latest`)
+    if (response.data && response.data.state === 0) {
+      hotspot.value = response.data.data
+    } else {
+      hotspot.value = null
+    }
+  } catch (error) {
+    console.error('获取热点结果失败:', error)
+    hotspot.value = null
+  } finally {
+    hotspotLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchLatest()
+  fetchHotspot()
+})
 </script>
 
 <template>
@@ -103,6 +133,77 @@ onMounted(fetchLatest)
       </template>
       <el-empty v-else description="暂无选股结果" />
     </el-card>
+    <el-card shadow="hover" class="hotspot-card" v-loading="hotspotLoading">
+      <template #header>
+        <div class="card-header">
+          <h2 class="card-title">热点方向</h2>
+          <span v-if="hotspot" class="card-date">{{ hotspot.tradeDate }}（涨停家数仅优质池口径）</span>
+        </div>
+      </template>
+      <template v-if="hotspot">
+        <h3 class="section-title">行业 Top 10</h3>
+        <el-table :data="hotspot.industries || []" stripe>
+          <el-table-column type="index" label="#" width="50" />
+          <el-table-column prop="name" label="行业" min-width="110" />
+          <el-table-column prop="hotScore" label="热度" width="80" sortable />
+          <el-table-column prop="stockCount" label="股票数" width="80" />
+          <el-table-column prop="limitUpCount" label="涨停数" width="80" />
+          <el-table-column label="单日均涨幅" width="110">
+            <template #default="scope">{{ pctText(scope.row.dailyAvgChange) }}</template>
+          </el-table-column>
+          <el-table-column label="5日均涨幅" width="110">
+            <template #default="scope">{{ pctText(scope.row.fiveDayAvgChange) }}</template>
+          </el-table-column>
+          <el-table-column label="炒作风险" width="130">
+            <template #default="scope">
+              <el-tooltip :content="scope.row.hypeBasis" placement="top">
+                <el-tag :type="hypeType(scope.row.hypeLabel)" size="small">
+                  {{ hypeText(scope.row.hypeLabel) }}
+                </el-tag>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column label="代表股" min-width="200">
+            <template #default="scope">
+              <span v-for="s in (scope.row.topStocks || [])" :key="s.symbol" class="top-stock">
+                {{ s.name }}({{ pctText(s.dailyChange) }})
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <h3 class="section-title">概念 Top 10</h3>
+        <el-table :data="hotspot.concepts || []" stripe>
+          <el-table-column type="index" label="#" width="50" />
+          <el-table-column prop="name" label="概念" min-width="110" />
+          <el-table-column prop="hotScore" label="热度" width="80" sortable />
+          <el-table-column prop="stockCount" label="股票数" width="80" />
+          <el-table-column prop="limitUpCount" label="涨停数" width="80" />
+          <el-table-column label="单日均涨幅" width="110">
+            <template #default="scope">{{ pctText(scope.row.dailyAvgChange) }}</template>
+          </el-table-column>
+          <el-table-column label="5日均涨幅" width="110">
+            <template #default="scope">{{ pctText(scope.row.fiveDayAvgChange) }}</template>
+          </el-table-column>
+          <el-table-column label="炒作风险" width="130">
+            <template #default="scope">
+              <el-tooltip :content="scope.row.hypeBasis" placement="top">
+                <el-tag :type="hypeType(scope.row.hypeLabel)" size="small">
+                  {{ hypeText(scope.row.hypeLabel) }}
+                </el-tag>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column label="代表股" min-width="200">
+            <template #default="scope">
+              <span v-for="s in (scope.row.topStocks || [])" :key="s.symbol" class="top-stock">
+                {{ s.name }}({{ pctText(s.dailyChange) }})
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+      <el-empty v-else description="暂无热点结果" />
+    </el-card>
   </div>
 </template>
 
@@ -154,5 +255,20 @@ onMounted(fetchLatest)
 .stock-symbol {
   color: #6b7280;
   font-size: 0.8125rem;
+}
+.hotspot-card {
+  margin-top: 1.5rem;
+}
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0.5rem 0;
+}
+.top-stock {
+  margin-right: 8px;
+  color: #4b5563;
+  font-size: 0.8125rem;
+  white-space: nowrap;
 }
 </style>
