@@ -4116,7 +4116,7 @@ git commit -m "feat: 新增选股结果展示页与路由菜单"
 - Consumes: `POST /hotspot/latest` → `Result<HotspotResult>`；响应字段：`tradeDate`、`generatedAt`、`industries`/`concepts`（数组元素：`name`、`hotScore`、`dailyAvgChange`、`dailyAmountRatio`、`limitUpCount`、`fiveDayAvgChange`、`fiveDayAmountRatio`、`fiveDayLimitUpCount`、`stockCount`、`hypeLabel`、`hypeBasis`、`topStocks[{symbol,name,dailyChange,fiveDayChange}]`）。
 - Produces: 页面 `/screener` 完整版（榜单 + 热点 + 炒作风险标注）。
 
-- [ ] **Step 1: StockScreener.vue 追加热点数据获取（Task 10）**
+- [x] **Step 1: StockScreener.vue 追加热点数据获取（Task 10）**
 
 在 `<script setup>` 中追加（`HYPE_LABEL`/`HYPE_TYPE` 常量、`hotspot`/`hotspotLoading` 状态、`fetchHotspot` 函数、`onMounted` 追加调用）：
 
@@ -4158,7 +4158,7 @@ onMounted(() => {
 })
 ```
 
-- [ ] **Step 2: 模板追加热点区块（Task 10）**
+- [x] **Step 2: 模板追加热点区块（Task 10）**
 
 在 `</el-card>` 之后（`</template>` 之前）追加：
 
@@ -4258,16 +4258,16 @@ onMounted(() => {
 }
 ```
 
-- [ ] **Step 4: 构建验证（Task 10）**
+- [x] **Step 4: 构建验证（Task 10）**
 
 Run: `cd StockAI-Console && npm run build`
 Expected: 构建成功
 
-- [ ] **Step 5: 手动核验（可选，需后端运行）（Task 10）**
+- [x] **Step 5: 手动核验（可选，需后端运行）（Task 10）**
 
 后端运行并执行过 `/screening/run` 后，访问 `/screener`：热点区块展示行业/概念 Top 10、热度排序、炒作风险标注（hover 显示依据）与代表股。
 
-- [ ] **Step 6: Commit（Task 10）**
+- [x] **Step 6: Commit（Task 10）**
 
 ```bash
 git add StockAI-Console/src/components/StockScreener.vue

@@ -4,13 +4,13 @@
 - review_mode: standard
 - tdd_mode: tdd
 - build_mode: subagent-driven-development
-- 当前 task: Task 10: 前端热点方向展示（5.2）
-- 当前阶段: pending（brief 未派发）
+- 当前 task: 全部计划任务完成（Task 1-10）— 进入最终整分支 review
+- 当前阶段: final review（review_mode=standard）
 - model: mid-tier（GLM 默认会话模型）
-- base: db30f51（Task 9 实现提交；Task 10 将基于此后）
-- 实现提交: Task 8 = 4f2a287；Task 9 = db30f51
-- RED/GREEN 证据: Task 8 聚焦 33/33、全量 121/121 GREEN；Task 9 `npm run build` exit 0
-- 风险信号: Task 8/9 无（实现者自报无）
+- base: 7b5f223（Task 10 实现提交）
+- 实现提交: Task 8 = 4f2a287；Task 9 = db30f51；Task 10 = 7b5f223
+- RED/GREEN 证据: Task 8 聚焦 33/33、全量 121/121 GREEN；Task 9/10 `vite.cmd build` exit 0
+- 风险信号: 无（实现者自报无）
 - 审查轮次: 0
 
 ## 已完成任务记录
@@ -45,3 +45,6 @@
 - Task 9: complete（commit db30f51 + 勾选；tasks.md 5.1 勾选；reviewer Approved）
   - deferred minors: ① el-tab-pane 无内容表格外置（brief 逐字）② 网络错误与无数据同显 el-empty（brief 逐字）③ 硬编码 hex 色（brief 原文）
   - 备注: Step 5 手动核验跳过（可选需后端）；`npm run build` exit 0（npm 沙箱告警，vite.cmd 复核 exit 0）
+- Task 10: complete（commit 7b5f223 + 勾选；tasks.md 5.2 勾选；reviewer Approved）
+  - deferred minors: ① 行业/概念两表模板重复（brief 逐字要求）② top-stock nowrap 潜在溢出（brief 原文）
+  - 备注: 单文件 StockScreener.vue 117+/1-；Step 5 手动核验跳过；`vite.cmd build` exit 0
