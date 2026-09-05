@@ -50,6 +50,7 @@ market-regime:
 
 # 选股引擎：三风格四因子权重（估值/成长/质量/动量）
 screening:
+  cron: "0 0 18 * * MON-FRI"
   weights:
     value:
       valuation: 0.40

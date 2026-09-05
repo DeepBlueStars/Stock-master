@@ -2,23 +2,27 @@ package com.xian.stockai.service;
 
 import com.xian.stockai.config.ScreeningProperties;
 import com.xian.stockai.dao.IndexConstituentsRepository;
+import com.xian.stockai.dao.ScreeningResultRepository;
 import com.xian.stockai.dao.ScreeningScoreRecordRepository;
 import com.xian.stockai.dao.StockBasicInfoRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockFundamentalsRepository;
 import com.xian.stockai.po.BoardEntry;
 import com.xian.stockai.po.IndexConstituents;
+import com.xian.stockai.po.ScreeningResult;
 import com.xian.stockai.po.ScreeningScoreRecord;
 import com.xian.stockai.po.StockBasicInfo;
 import com.xian.stockai.po.StockDailyKline;
 import com.xian.stockai.po.StockFactor;
 import com.xian.stockai.po.StockFundamentals;
+import com.xian.stockai.vo.Result;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -47,6 +51,8 @@ class ScreeningServiceTest {
     private StockBasicInfoRepository stockBasicInfoRepository;
     @Mock
     private ScreeningScoreRecordRepository screeningScoreRecordRepository;
+    @Mock
+    private ScreeningResultRepository screeningResultRepository;
 
     private ScreeningService service;
 
@@ -54,7 +60,7 @@ class ScreeningServiceTest {
     void setUp() {
         service = new ScreeningService(indexConstituentsRepository, stockFundamentalsRepository,
                 stockDailyKlineRepository, stockBasicInfoRepository, new ScreeningProperties(),
-                screeningScoreRecordRepository);
+                screeningScoreRecordRepository, screeningResultRepository);
     }
 
     private IndexConstituents constituent(String symbol) {
@@ -369,5 +375,21 @@ class ScreeningServiceTest {
                 ArgumentCaptor.forClass(ScreeningScoreRecord.class);
         verify(screeningScoreRecordRepository).save(captor.capture());
         assertEquals("existing-id", captor.getValue().getId());
+    }
+
+    // ==== Task 8: latest / history ====
+
+    @Test
+    void latestFailsWhenNoData() {
+        when(screeningResultRepository.findTopByOrderByTradeDateDesc()).thenReturn(null);
+        Result<ScreeningResult> result = service.latest();
+        assertFalse(result.checkSuccess());
+        assertEquals("暂无选股结果", result.getMessage());
+    }
+
+    @Test
+    void historyUsesPageAndSize() {
+        service.history(2, 5);
+        verify(screeningResultRepository).findAllByOrderByTradeDateDesc(PageRequest.of(1, 5));
     }
 }

@@ -2,18 +2,23 @@ package com.xian.stockai.service;
 
 import com.xian.stockai.config.ScreeningProperties;
 import com.xian.stockai.dao.IndexConstituentsRepository;
+import com.xian.stockai.dao.ScreeningResultRepository;
 import com.xian.stockai.dao.ScreeningScoreRecordRepository;
 import com.xian.stockai.dao.StockBasicInfoRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockFundamentalsRepository;
 import com.xian.stockai.po.BoardEntry;
 import com.xian.stockai.po.IndexConstituents;
+import com.xian.stockai.po.ScreeningResult;
 import com.xian.stockai.po.ScreeningScoreRecord;
 import com.xian.stockai.po.StockBasicInfo;
 import com.xian.stockai.po.StockDailyKline;
 import com.xian.stockai.po.StockFactor;
 import com.xian.stockai.po.StockFundamentals;
+import com.xian.stockai.vo.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -59,19 +64,22 @@ public class ScreeningService {
     private final StockBasicInfoRepository stockBasicInfoRepository;
     private final ScreeningProperties screeningProperties;
     private final ScreeningScoreRecordRepository screeningScoreRecordRepository;
+    private final ScreeningResultRepository screeningResultRepository;
 
     public ScreeningService(IndexConstituentsRepository indexConstituentsRepository,
                             StockFundamentalsRepository stockFundamentalsRepository,
                             StockDailyKlineRepository stockDailyKlineRepository,
                             StockBasicInfoRepository stockBasicInfoRepository,
                             ScreeningProperties screeningProperties,
-                            ScreeningScoreRecordRepository screeningScoreRecordRepository) {
+                            ScreeningScoreRecordRepository screeningScoreRecordRepository,
+                            ScreeningResultRepository screeningResultRepository) {
         this.indexConstituentsRepository = indexConstituentsRepository;
         this.stockFundamentalsRepository = stockFundamentalsRepository;
         this.stockDailyKlineRepository = stockDailyKlineRepository;
         this.stockBasicInfoRepository = stockBasicInfoRepository;
         this.screeningProperties = screeningProperties;
         this.screeningScoreRecordRepository = screeningScoreRecordRepository;
+        this.screeningResultRepository = screeningResultRepository;
     }
 
     /**
@@ -334,6 +342,15 @@ public class ScreeningService {
         screeningScoreRecordRepository.save(record);
         log.info("选股快照已入库: tradeDate={}, 股票数={}", tradeDate, factors.size());
         return factors;
+    }
+
+    public Result<ScreeningResult> latest() {
+        return Result.successIfNotNull(screeningResultRepository.findTopByOrderByTradeDateDesc(), "暂无选股结果");
+    }
+
+    public Result<List<ScreeningResult>> history(int page, int size) {
+        return Result.success(screeningResultRepository
+                .findAllByOrderByTradeDateDesc(PageRequest.of(page - 1, size)));
     }
 
     private static int countMissing(StockFactor f) {
