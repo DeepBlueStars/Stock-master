@@ -204,4 +204,57 @@ class HotspotServiceTest {
         when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(null);
         assertNull(service.buildAndSave("2026-09-01"));
     }
+
+    // ==== Task 6: 炒作风险标注 ====
+
+    @Test
+    void hypeLabelRules() {
+        // 中位数 ≥60 → SUPPORTED
+        assertEquals(HotspotService.HYPE_SUPPORTED, HotspotService.hypeLabel(List.of(50, 70, 90), 80));
+        // 中位数 <40 且热度 ≥60 → HYPE_RISK
+        assertEquals(HotspotService.HYPE_RISK, HotspotService.hypeLabel(List.of(30, 35, 38), 80));
+        // 中位数 <40 但热度 <60 → NEUTRAL
+        assertEquals(HotspotService.HYPE_NEUTRAL, HotspotService.hypeLabel(List.of(30, 35, 38), 50));
+        // 中位数 40~60 → NEUTRAL；恰为 40 → NEUTRAL（<40 不成立）
+        assertEquals(HotspotService.HYPE_NEUTRAL, HotspotService.hypeLabel(List.of(45, 55), 70));
+        assertEquals(HotspotService.HYPE_NEUTRAL, HotspotService.hypeLabel(List.of(40), 80));
+        // 空数据 → NEUTRAL；恰为 60 → SUPPORTED（≥60 边界）
+        assertEquals(HotspotService.HYPE_NEUTRAL, HotspotService.hypeLabel(List.of(), 80));
+        assertEquals(HotspotService.HYPE_SUPPORTED, HotspotService.hypeLabel(List.of(60), 80));
+        // null 质量分排除：[30, null, 35] → 有效 [30,35] 中位数 32.5 → HYPE_RISK（热度 80）
+        assertEquals(HotspotService.HYPE_RISK,
+                HotspotService.hypeLabel(java.util.Arrays.asList(30, null, 35), 80));
+    }
+
+    @Test
+    void medianQualityHandlesOddAndEven() {
+        assertEquals(0, new BigDecimal("35").compareTo(HotspotService.medianQuality(List.of(30, 35, 38))));
+        assertEquals(0, new BigDecimal("32.5").compareTo(HotspotService.medianQuality(List.of(30, 35))));
+        assertNull(HotspotService.medianQuality(List.of()));
+        assertNull(HotspotService.medianQuality(java.util.Arrays.asList((Integer) null)));
+    }
+
+    @Test
+    void hypeBasisTextIncludesMedianAndHotScore() {
+        String basis = HotspotService.buildHypeBasis(new BigDecimal("32.5"), 80);
+        assertEquals("质量中位数 32.5，热度得分 80", basis);
+    }
+
+    @Test
+    void buildAnnotatesDirections() {
+        mockPool();
+        HotspotResult result = service.buildAndSave("2026-09-01");
+        // 白酒：质量 [50,70,90] 中位数 70 ≥60 → SUPPORTED
+        HotspotDirection liquor = result.getIndustries().stream()
+                .filter(d -> "白酒".equals(d.getName())).findFirst().orElseThrow();
+        assertEquals(HotspotService.HYPE_SUPPORTED, liquor.getHypeLabel());
+        assertEquals("质量中位数 70，热度得分 0", liquor.getHypeBasis());
+        // 医药：质量 [30,35,38] 中位数 35 <40 且热度 80 ≥60 → HYPE_RISK
+        HotspotDirection medicine = result.getIndustries().stream()
+                .filter(d -> "医药".equals(d.getName())).findFirst().orElseThrow();
+        assertEquals(HotspotService.HYPE_RISK, medicine.getHypeLabel());
+        assertEquals("质量中位数 35，热度得分 80", medicine.getHypeBasis());
+        // 概念"消费"（A,B,C）同白酒 → SUPPORTED
+        assertEquals(HotspotService.HYPE_SUPPORTED, result.getConcepts().get(0).getHypeLabel());
+    }
 }

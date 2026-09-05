@@ -47,6 +47,10 @@ public class HotspotService {
     private static final BigDecimal FIVE_DAY_HEAT_WEIGHT = new BigDecimal("0.6");
     private static final BigDecimal DAILY_HEAT_WEIGHT = new BigDecimal("0.4");
 
+    public static final String HYPE_SUPPORTED = "SUPPORTED";
+    public static final String HYPE_NEUTRAL = "NEUTRAL";
+    public static final String HYPE_RISK = "HYPE_RISK";
+
     private final IndexConstituentsRepository indexConstituentsRepository;
     private final StockIndustryConceptRepository stockIndustryConceptRepository;
     private final StockDailyKlineRepository stockDailyKlineRepository;
@@ -283,10 +287,54 @@ public class HotspotService {
             d.setHotScore(FIVE_DAY_HEAT_WEIGHT.multiply(fiveHeat)
                     .add(DAILY_HEAT_WEIGHT.multiply(dailyHeat))
                     .setScale(0, RoundingMode.HALF_UP).intValueExact());
+            List<Integer> qualities = new ArrayList<>();
+            for (MemberStats m : aggList.get(i).members) {
+                qualities.add(m.quality);
+            }
+            BigDecimal median = medianQuality(qualities);
+            d.setHypeLabel(hypeLabel(qualities, d.getHotScore()));
+            d.setHypeBasis(median == null
+                    ? "无质量分数据，热度得分 " + d.getHotScore()
+                    : buildHypeBasis(median, d.getHotScore()));
         }
         raw.sort(Comparator.comparing(HotspotDirection::getHotScore).reversed()
                 .thenComparing(HotspotDirection::getName));
         return raw.size() > TOP_N ? new ArrayList<>(raw.subList(0, TOP_N)) : raw;
+    }
+
+    /**
+     * 炒作风险标注：质量中位数 <40 且热度 ≥60 → HYPE_RISK；≥60 → SUPPORTED；其余 NEUTRAL。
+     */
+    static String hypeLabel(List<Integer> qualities, int hotScore) {
+        BigDecimal median = medianQuality(qualities);
+        if (median == null) {
+            return HYPE_NEUTRAL;
+        }
+        if (median.compareTo(new BigDecimal("40")) < 0 && hotScore >= 60) {
+            return HYPE_RISK;
+        }
+        if (median.compareTo(new BigDecimal("60")) >= 0) {
+            return HYPE_SUPPORTED;
+        }
+        return HYPE_NEUTRAL;
+    }
+
+    /** 质量分中位数（null 排除；偶数个取中间两数平均；无有效值返回 null）。 */
+    static BigDecimal medianQuality(List<Integer> qualities) {
+        List<Integer> valid = qualities.stream().filter(Objects::nonNull).sorted().toList();
+        if (valid.isEmpty()) {
+            return null;
+        }
+        int mid = valid.size() / 2;
+        if (valid.size() % 2 == 1) {
+            return BigDecimal.valueOf(valid.get(mid));
+        }
+        return BigDecimal.valueOf(valid.get(mid - 1)).add(BigDecimal.valueOf(valid.get(mid)))
+                .divide(new BigDecimal("2"), 1, RoundingMode.HALF_UP);
+    }
+
+    static String buildHypeBasis(BigDecimal median, int hotScore) {
+        return "质量中位数 " + median + "，热度得分 " + hotScore;
     }
 
     /** 代表股：方向内按 单日涨幅+5日涨幅 之和降序取 3 只。 */
