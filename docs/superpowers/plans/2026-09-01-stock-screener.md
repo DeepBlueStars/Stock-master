@@ -2748,7 +2748,7 @@ Expected: COMPILATION ERROR（`hypeLabel`/`medianQuality` 不存在）
 
 （循环变量 `i` 与 `aggList.get(i)` 给出该方向对应的 `DirectionAgg`，成员质量分从中提取。）
 
-- [ ] **Step 5: 运行测试确认通过（Task 6）**
+- [x] **Step 5: 运行测试确认通过（Task 6）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=HotspotServiceTest`
 Expected: PASS
@@ -2758,7 +2758,7 @@ Expected: PASS
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
 
-- [ ] **Step 7: Commit（Task 6）**
+- [x] **Step 7: Commit（Task 6）**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/service/HotspotService.java \
