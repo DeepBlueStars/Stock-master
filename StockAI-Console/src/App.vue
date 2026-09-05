@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Menu as MenuIcon, Document, Setting, Bell, User } from '@element-plus/icons-vue'
+import { Menu as MenuIcon, Document, Setting, Bell, User, TrendCharts } from '@element-plus/icons-vue'
 import axios from 'axios'
 import config from './config/config'
 
@@ -134,6 +134,10 @@ onMounted(fetchNotifications)
           <el-menu-item index="/regime">
             <el-icon><Setting /></el-icon>
             <span>温度计</span>
+          </el-menu-item>
+          <el-menu-item index="/screener">
+            <el-icon><TrendCharts /></el-icon>
+            <span>选股</span>
           </el-menu-item>
         </el-menu>
       </el-aside>

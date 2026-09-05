@@ -3,6 +3,7 @@ import AssetConfig from '../components/AssetConfig/AssetConfig.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Config from '../components/Config.vue'
 import MarketRegime from '../components/MarketRegime.vue'
+import StockScreener from '../components/StockScreener.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,6 +27,11 @@ const router = createRouter({
       path: '/regime',
       name: '温度计',
       component: MarketRegime
+    },
+    {
+      path: '/screener',
+      name: '选股',
+      component: StockScreener
     }
   ]
 })
