@@ -4,13 +4,13 @@
 - review_mode: standard
 - tdd_mode: tdd
 - build_mode: subagent-driven-development
-- 当前 task: Task 4: 长期价值评级与全量快照入库（2.1）
+- 当前 task: Task 9: 前端选股结果展示页（5.1）
 - 当前阶段: pending（brief 未派发）
 - model: mid-tier（GLM 默认会话模型）
-- base: 509e78f
-- 实现提交: 无
-- RED/GREEN 证据: 无
-- 风险信号: 待 implementer 自报
+- base: 4f2a287（Task 8 实现提交；Task 9 将基于此后）
+- 实现提交: Task 8 = 4f2a287
+- RED/GREEN 证据: Task 8 聚焦 33/33、全量 121/121 GREEN
+- 风险信号: Task 8 无（实现者自报无）
 - 审查轮次: 0
 
 ## 已完成任务记录
@@ -18,12 +18,27 @@
 - Task 1: complete（commits 0b0e803..6e7ce3e；reviewer Approved 无 Critical/Important）
   - 风险信号命中: diff>200 行（353 行模板化 PO/测试代码）→ 已派发每任务 reviewer
   - deferred minors: ScreenerPoTest.java:5 未使用 import（Indexed）
-  - 备注: 原始报告误删已重建；计划步骤文本已去重（追加（Task N）后缀）以通过 task-checkoff 唯一性校验
-  - 计划 7 步全部勾选并 PASS task-checkoff；tasks.md 1.1 未勾选（由 Task 1+2 共同覆盖，待 Task 2 完成）
+  - 备注: 原始报告误删已重建；计划步骤文本已去重（追加（Task N）后缀）以通过 task-checkoff 唯一性校验；计划 7 步全部勾选并 PASS；tasks.md 1.1 由 Task 1+2 共同覆盖
 - Task 2: complete（commit 0959327；tasks.md 1.1 勾选 11bb913；review 通过，测试 GREEN）
   - 备注: 四因子横截面百分位引擎，7 项用例；percentile 方向/权重/边界与设计一致
 - Task 3: complete（commit 509e78f；tasks.md 1.2 勾选；reviewer Approved 无 Critical/Important）
-  - 风险信号命中: 无（306 行，全部为 brief 规定代码）
-  - deferred minors: ① tie-break（同分按 symbol）无测试覆盖；② ScreeningProperties 部分覆盖场景无 per-style 回退（当前 yml 全量定义，运行时安全）；③ mvn 控制台 GBK 乱码（环境伪影）
+  - deferred minors: ① tie-break 同分按 symbol 无测试覆盖；② ScreeningProperties 部分覆盖场景无 per-style 回退（当前 yml 全量定义，运行时安全）；③ mvn 控制台 GBK 乱码（环境伪影）
   - 测试: ScreeningServiceTest 14/14，全量 85/85
-  - 备注: 本仓库无 mvnw，测试命令统一 `cd StockAI; mvn test ...`；后续任务沿用
+  - 备注: 本仓库无 mvnw，测试命令统一 `cd StockAI; mvn test ...`
+- Task 4: complete（commit 14efb90；tasks.md 2.1 勾选；reviewer Approved）
+  - Ruling: brief 用例 C 参数顺序缺陷 → factor("C", null, 46, 44, null)，算术正确
+  - deferred minors: ① 显式 when(...thenReturn(null)) 冗余 stub（ScreeningServiceTest）；② 同日并发运行依赖唯一索引兜底（Task 8 编排注意串行）
+  - 测试: 25/25 聚焦、90/90 全量
+- Task 5: complete（commit dca6051；tasks.md 3.1 勾选；reviewer Approved）
+  - Ruling: brief `return save(result)` 与未 stub save 的逐字测试矛盾 → `save(result); return result;`，与 Task 4 模式一致
+  - deferred minors: ① Top-10 截断与同名 tie-break 无测试；② latest close 非正数未防护（brief 原文如此）；③ 测试注释不准确（仅注释问题）
+- Task 6: complete（commit 50d53ed；tasks.md 3.2 勾选；reviewer Approved）
+  - deferred minors: ① null 中位数集成分支无测试；② 中位数每方向计算两次（brief 逐字规定）
+  - 测试: 10/10 聚焦、101/101 全量
+- Task 7: complete（commit 1bb1bfa + 勾选 aed094a；tasks.md 4.1 勾选；reviewer Approved）
+  - deferred minors: ① ScreeningReportServiceTest 未使用 import（HotspotStock/verify，brief 逐字规定）；② "无数据"均分分支与"成功路径榜单未变"断言缺覆盖
+  - 测试: 13/13 聚焦、106/106 全量
+- Task 8: complete（commit 4f2a287 + 勾选；tasks.md 4.2 勾选；reviewer Approved）
+  - Ruling: brief Step 3 单 try 与 Step 1 verbatim 测试（STRICT_STUBS）矛盾（已实测复现 Errors:1）→ 测试优先，生产改三风格独立 try-catch，InOrder 不变
+  - deferred minors: ① findByTradeDate/save 裸抛（brief 原文）② 三处榜单 catch 日志无法区分风格 ③ ScreeningService 未使用 import Pageable（brief 逐字要求）④ runDaily 忽略返回值（符合设计）
+  - 测试: 聚焦 33/33、全量 121/121

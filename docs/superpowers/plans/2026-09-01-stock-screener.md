@@ -3607,7 +3607,7 @@ setUp 最终形态：
 
 （import 补 `com.xian.stockai.vo.Result`。）
 
-- [ ] **Step 2: 运行测试确认失败（Task 8）**
+- [x] **Step 2: 运行测试确认失败（Task 8）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningTaskTest,ScreeningControllerTest,HotspotControllerTest,ScreeningServiceTest`
 Expected: COMPILATION ERROR（`ScreeningTask` 等不存在）
@@ -3788,7 +3788,7 @@ public class HotspotController {
 }
 ```
 
-- [ ] **Step 5: ScreeningService 增加 latest/history（构造器追加 repository）（Task 8）**
+- [x] **Step 5: ScreeningService 增加 latest/history（构造器追加 repository）（Task 8）**
 
 `ScreeningService.java`：
 1. import 增加 `com.xian.stockai.dao.ScreeningResultRepository`、`com.xian.stockai.po.ScreeningResult`、`com.xian.stockai.vo.Result`、`org.springframework.data.domain.PageRequest`、`org.springframework.data.domain.Pageable`。
@@ -3806,7 +3806,7 @@ public class HotspotController {
     }
 ```
 
-- [ ] **Step 6: application.yml 增加 cron（Task 8）**
+- [x] **Step 6: application.yml 增加 cron（Task 8）**
 
 在 `screening:` 配置块的 `weights:` 之前追加一行：
 
@@ -3827,7 +3827,7 @@ Expected: PASS
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS（含全部既有测试）
 
-- [ ] **Step 9: Commit（Task 8）**
+- [x] **Step 9: Commit（Task 8）**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/task/ScreeningTask.java \
