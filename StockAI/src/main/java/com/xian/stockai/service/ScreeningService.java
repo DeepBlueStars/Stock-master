@@ -1,9 +1,11 @@
 package com.xian.stockai.service;
 
+import com.xian.stockai.config.ScreeningProperties;
 import com.xian.stockai.dao.IndexConstituentsRepository;
 import com.xian.stockai.dao.StockBasicInfoRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockFundamentalsRepository;
+import com.xian.stockai.po.BoardEntry;
 import com.xian.stockai.po.IndexConstituents;
 import com.xian.stockai.po.StockBasicInfo;
 import com.xian.stockai.po.StockDailyKline;
@@ -16,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,19 +41,24 @@ public class ScreeningService {
     private static final BigDecimal QUALITY_ROE_WEIGHT = new BigDecimal("0.6");
     private static final BigDecimal QUALITY_GM_WEIGHT = new BigDecimal("0.4");
 
+    private static final int TOP_N = 20;
+
     private final IndexConstituentsRepository indexConstituentsRepository;
     private final StockFundamentalsRepository stockFundamentalsRepository;
     private final StockDailyKlineRepository stockDailyKlineRepository;
     private final StockBasicInfoRepository stockBasicInfoRepository;
+    private final ScreeningProperties screeningProperties;
 
     public ScreeningService(IndexConstituentsRepository indexConstituentsRepository,
                             StockFundamentalsRepository stockFundamentalsRepository,
                             StockDailyKlineRepository stockDailyKlineRepository,
-                            StockBasicInfoRepository stockBasicInfoRepository) {
+                            StockBasicInfoRepository stockBasicInfoRepository,
+                            ScreeningProperties screeningProperties) {
         this.indexConstituentsRepository = indexConstituentsRepository;
         this.stockFundamentalsRepository = stockFundamentalsRepository;
         this.stockDailyKlineRepository = stockDailyKlineRepository;
         this.stockBasicInfoRepository = stockBasicInfoRepository;
+        this.screeningProperties = screeningProperties;
     }
 
     /**
@@ -193,6 +201,79 @@ public class ScreeningService {
             f.setDataIncomplete(missing >= 2);
         }
         return factors;
+    }
+
+    /**
+     * 生成指定风格的 Top 20 候选榜：data_incomplete 不入榜；缺失因子按剩余权重重归一化。
+     */
+    public List<BoardEntry> buildBoard(String style, List<StockFactor> factors) {
+        Map<String, BigDecimal> weights = screeningProperties.weightsOf(style);
+        List<BoardEntry> entries = new ArrayList<>();
+        for (StockFactor f : factors) {
+            if (Boolean.TRUE.equals(f.getDataIncomplete())) {
+                continue;
+            }
+            BigDecimal total = weightedTotal(weights, f);
+            if (total == null) {
+                continue;
+            }
+            BoardEntry e = new BoardEntry();
+            e.setSymbol(f.getSymbol());
+            e.setName(f.getName());
+            e.setTotalScore(total);
+            e.setValuation(f.getValuation());
+            e.setGrowth(f.getGrowth());
+            e.setQuality(f.getQuality());
+            e.setMomentum(f.getMomentum());
+            e.setLongTermRating(f.getLongTermRating());
+            e.setReason(buildReason(f));
+            entries.add(e);
+        }
+        entries.sort(Comparator.comparing(BoardEntry::getTotalScore).reversed()
+                .thenComparing(BoardEntry::getSymbol));
+        return entries.size() > TOP_N ? new ArrayList<>(entries.subList(0, TOP_N)) : entries;
+    }
+
+    private BigDecimal weightedTotal(Map<String, BigDecimal> weights, StockFactor f) {
+        BigDecimal sum = ZERO;
+        BigDecimal weightSum = ZERO;
+        if (f.getValuation() != null) {
+            sum = sum.add(weights.get("valuation").multiply(BigDecimal.valueOf(f.getValuation())));
+            weightSum = weightSum.add(weights.get("valuation"));
+        }
+        if (f.getGrowth() != null) {
+            sum = sum.add(weights.get("growth").multiply(BigDecimal.valueOf(f.getGrowth())));
+            weightSum = weightSum.add(weights.get("growth"));
+        }
+        if (f.getQuality() != null) {
+            sum = sum.add(weights.get("quality").multiply(BigDecimal.valueOf(f.getQuality())));
+            weightSum = weightSum.add(weights.get("quality"));
+        }
+        if (f.getMomentum() != null) {
+            sum = sum.add(weights.get("momentum").multiply(BigDecimal.valueOf(f.getMomentum())));
+            weightSum = weightSum.add(weights.get("momentum"));
+        }
+        if (weightSum.compareTo(ZERO) <= 0) {
+            return null;
+        }
+        return sum.divide(weightSum, 2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 模板化入选理由（纯量化文本，不用 AI，保证可复现）。
+     */
+    public static String buildReason(StockFactor f) {
+        List<String> parts = new ArrayList<>();
+        if (f.getRoePct() != null) {
+            parts.add("ROE 池内前 " + (100 - f.getRoePct()) + "%");
+        }
+        if (f.getPePct() != null) {
+            parts.add("PE 低于 " + f.getPePct() + "% 成分股");
+        }
+        if (f.getMomentumPct() != null) {
+            parts.add("20 日涨幅池内前 " + (100 - f.getMomentumPct()) + "%");
+        }
+        return String.join("，", parts);
     }
 
     private static int countMissing(StockFactor f) {

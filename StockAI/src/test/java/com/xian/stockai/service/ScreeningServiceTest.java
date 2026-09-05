@@ -1,9 +1,11 @@
 package com.xian.stockai.service;
 
+import com.xian.stockai.config.ScreeningProperties;
 import com.xian.stockai.dao.IndexConstituentsRepository;
 import com.xian.stockai.dao.StockBasicInfoRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockFundamentalsRepository;
+import com.xian.stockai.po.BoardEntry;
 import com.xian.stockai.po.IndexConstituents;
 import com.xian.stockai.po.StockBasicInfo;
 import com.xian.stockai.po.StockDailyKline;
@@ -45,7 +47,7 @@ class ScreeningServiceTest {
     @BeforeEach
     void setUp() {
         service = new ScreeningService(indexConstituentsRepository, stockFundamentalsRepository,
-                stockDailyKlineRepository, stockBasicInfoRepository);
+                stockDailyKlineRepository, stockBasicInfoRepository, new ScreeningProperties());
     }
 
     private IndexConstituents constituent(String symbol) {
@@ -200,5 +202,104 @@ class ScreeningServiceTest {
     void emptyPoolReturnsEmptyList() {
         when(indexConstituentsRepository.findAll()).thenReturn(List.of());
         assertTrue(service.calculateFactors("2026-09-01").isEmpty());
+    }
+
+    // ==== Task 3: 综合评分与风格榜单 ====
+
+    private StockFactor factor(String symbol, Integer val, Integer gro, Integer qua, Integer mon) {
+        StockFactor f = new StockFactor();
+        f.setSymbol(symbol);
+        f.setName(symbol + "名称");
+        f.setValuation(val);
+        f.setGrowth(gro);
+        f.setQuality(qua);
+        f.setMomentum(mon);
+        f.setDataIncomplete(false);
+        return f;
+    }
+
+    @Test
+    void buildBoardWeightsAndRanksByTotalScore() {
+        List<StockFactor> factors = List.of(
+                factor("A", 100, 100, 100, 100),
+                factor("B", 60, 80, 70, 90),
+                factor("C", null, 60, 80, 70)); // 缺估值 → 重归一化
+        List<BoardEntry> board = service.buildBoard(ScreeningService.STYLE_VALUE, factors);
+        // value 权重 [0.4,0.2,0.3,0.1]：A=100.00；B=0.4*60+0.2*80+0.3*70+0.1*90=70.00；
+        // C 剔除估值后 (0.2*60+0.3*80+0.1*70)/0.6 = 43/0.6 = 71.67
+        assertEquals(3, board.size());
+        assertEquals("A", board.get(0).getSymbol());
+        assertEquals("C", board.get(1).getSymbol());
+        assertEquals("B", board.get(2).getSymbol());
+        assertEquals(0, new BigDecimal("100.00").compareTo(board.get(0).getTotalScore()));
+        assertEquals(0, new BigDecimal("71.67").compareTo(board.get(1).getTotalScore()));
+        assertEquals(0, new BigDecimal("70.00").compareTo(board.get(2).getTotalScore()));
+    }
+
+    @Test
+    void buildBoardGrowthStyleUsesGrowthWeights() {
+        List<StockFactor> factors = List.of(
+                factor("A", 100, 100, 100, 100),
+                factor("B", 60, 80, 70, 90),
+                factor("C", null, 60, 80, 70));
+        List<BoardEntry> board = service.buildBoard(ScreeningService.STYLE_GROWTH, factors);
+        // growth 权重 [0.1,0.4,0.2,0.3]：B=79.00；C=(0.4*60+0.2*80+0.3*70)/0.9=61/0.9=67.78
+        assertEquals("A", board.get(0).getSymbol());
+        assertEquals("B", board.get(1).getSymbol());
+        assertEquals("C", board.get(2).getSymbol());
+        assertEquals(0, new BigDecimal("79.00").compareTo(board.get(1).getTotalScore()));
+        assertEquals(0, new BigDecimal("67.78").compareTo(board.get(2).getTotalScore()));
+    }
+
+    @Test
+    void buildBoardExcludesIncompleteFactors() {
+        StockFactor incomplete = factor("X", 90, 90, 90, 90);
+        incomplete.setDataIncomplete(true);
+        List<StockFactor> factors = List.of(incomplete, factor("A", 100, 100, 100, 100));
+        List<BoardEntry> board = service.buildBoard(ScreeningService.STYLE_BALANCED, factors);
+        assertEquals(1, board.size());
+        assertEquals("A", board.get(0).getSymbol());
+    }
+
+    @Test
+    void buildBoardCapsAtTopTwenty() {
+        List<StockFactor> factors = new ArrayList<>();
+        for (int i = 0; i < 25; i++) {
+            factors.add(factor("S" + i, 100 - i, 100 - i, 100 - i, 100 - i));
+        }
+        List<BoardEntry> board = service.buildBoard(ScreeningService.STYLE_BALANCED, factors);
+        assertEquals(20, board.size());
+        assertEquals("S0", board.get(0).getSymbol());
+        assertEquals("S19", board.get(19).getSymbol());
+    }
+
+    @Test
+    void buildReasonMatchesDesignTemplate() {
+        StockFactor f = factor("A", 100, 100, 100, 100);
+        f.setRoePct(85);
+        f.setPePct(82);
+        f.setMomentumPct(70);
+        assertEquals("ROE 池内前 15%，PE 低于 82% 成分股，20 日涨幅池内前 30%",
+                ScreeningService.buildReason(f));
+    }
+
+    @Test
+    void buildReasonSkipsNullParts() {
+        StockFactor f = factor("B", 100, 100, 100, 100);
+        f.setRoePct(60);
+        // pePct、momentumPct 为 null（财务/K线缺失）时省略对应片段
+        assertEquals("ROE 池内前 40%", ScreeningService.buildReason(f));
+    }
+
+    @Test
+    void defaultWeightsMatchDesign() {
+        ScreeningProperties props = new ScreeningProperties();
+        assertEquals(new BigDecimal("0.40"), props.weightsOf("value").get("valuation"));
+        assertEquals(new BigDecimal("0.20"), props.weightsOf("value").get("growth"));
+        assertEquals(new BigDecimal("0.30"), props.weightsOf("value").get("quality"));
+        assertEquals(new BigDecimal("0.10"), props.weightsOf("value").get("momentum"));
+        assertEquals(new BigDecimal("0.40"), props.weightsOf("growth").get("growth"));
+        assertEquals(new BigDecimal("0.25"), props.weightsOf("balanced").get("valuation"));
+        assertEquals(new BigDecimal("0.30"), props.weightsOf("balanced").get("quality"));
     }
 }

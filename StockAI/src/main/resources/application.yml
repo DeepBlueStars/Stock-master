@@ -47,3 +47,22 @@ market-regime:
   thresholds:
     volatility-high: 0.30
     valuation-high: 0.80
+
+# 选股引擎：三风格四因子权重（估值/成长/质量/动量）
+screening:
+  weights:
+    value:
+      valuation: 0.40
+      growth: 0.20
+      quality: 0.30
+      momentum: 0.10
+    growth:
+      valuation: 0.10
+      growth: 0.40
+      quality: 0.20
+      momentum: 0.30
+    balanced:
+      valuation: 0.25
+      growth: 0.25
+      quality: 0.30
+      momentum: 0.20
