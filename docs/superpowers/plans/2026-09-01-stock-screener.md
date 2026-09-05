@@ -2579,7 +2579,7 @@ public class HotspotService {
 }
 ```
 
-- [ ] **Step 5: 运行测试确认通过（Task 5）**
+- [x] **Step 5: 运行测试确认通过（Task 5）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=HotspotServiceTest,ScreenerPoTest`
 Expected: PASS
@@ -2589,7 +2589,7 @@ Expected: PASS
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
 
-- [ ] **Step 7: Commit（Task 5）**
+- [x] **Step 7: Commit（Task 5）**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/po/HotspotStock.java \
