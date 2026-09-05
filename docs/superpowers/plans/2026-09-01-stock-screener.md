@@ -3858,7 +3858,7 @@ git commit -m "feat: 实现选股定时任务编排与 REST API"
 
 **说明:** 参照 `MarketRegime.vue` 风格（script setup + axios 直连 `config.baseUrl` + `state === 0` 判断 + Element Plus）。无数据时显示 `el-empty`（`Result.fail` → state !== 0）。
 
-- [ ] **Step 1: 创建 StockScreener.vue（榜单版）（Task 9）**
+- [x] **Step 1: 创建 StockScreener.vue（榜单版）（Task 9）**
 
 创建 `StockAI-Console/src/components/StockScreener.vue`：
 
@@ -4023,7 +4023,7 @@ onMounted(fetchLatest)
 </style>
 ```
 
-- [ ] **Step 2: 注册路由（Task 9）**
+- [x] **Step 2: 注册路由（Task 9）**
 
 修改 `StockAI-Console/src/router/index.js`：
 
@@ -4069,7 +4069,7 @@ const router = createRouter({
 export default router
 ```
 
-- [ ] **Step 3: App.vue 菜单新增「选股」（Task 9）**
+- [x] **Step 3: App.vue 菜单新增「选股」（Task 9）**
 
 修改 `StockAI-Console/src/App.vue`：
 1. import 行追加图标（`TrendCharts`）：
@@ -4087,16 +4087,16 @@ import { Menu as MenuIcon, Document, Setting, Bell, User, TrendCharts } from '@e
           </el-menu-item>
 ```
 
-- [ ] **Step 4: 构建验证（Task 9）**
+- [x] **Step 4: 构建验证（Task 9）**
 
 Run: `cd StockAI-Console && npm run build`
 Expected: 构建成功（无编译错误）
 
-- [ ] **Step 5: 手动核验（可选，需后端运行）（Task 9）**
+- [x] **Step 5: 手动核验（可选，需后端运行）（Task 9）**
 
 启动后端（`cd StockAI && ./mvnw spring-boot:run`），浏览器打开前端 dev 服务器，访问 `/screener`：无数据时显示"暂无选股结果"；调用 `POST /screening/run` 生成数据后刷新可见榜单与 AI 报告。
 
-- [ ] **Step 6: Commit（Task 9）**
+- [x] **Step 6: Commit（Task 9）**
 
 ```bash
 git add StockAI-Console/src/components/StockScreener.vue \

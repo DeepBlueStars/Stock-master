@@ -4,13 +4,13 @@
 - review_mode: standard
 - tdd_mode: tdd
 - build_mode: subagent-driven-development
-- 当前 task: Task 9: 前端选股结果展示页（5.1）
+- 当前 task: Task 10: 前端热点方向展示（5.2）
 - 当前阶段: pending（brief 未派发）
 - model: mid-tier（GLM 默认会话模型）
-- base: 4f2a287（Task 8 实现提交；Task 9 将基于此后）
-- 实现提交: Task 8 = 4f2a287
-- RED/GREEN 证据: Task 8 聚焦 33/33、全量 121/121 GREEN
-- 风险信号: Task 8 无（实现者自报无）
+- base: db30f51（Task 9 实现提交；Task 10 将基于此后）
+- 实现提交: Task 8 = 4f2a287；Task 9 = db30f51
+- RED/GREEN 证据: Task 8 聚焦 33/33、全量 121/121 GREEN；Task 9 `npm run build` exit 0
+- 风险信号: Task 8/9 无（实现者自报无）
 - 审查轮次: 0
 
 ## 已完成任务记录
@@ -42,3 +42,6 @@
   - Ruling: brief Step 3 单 try 与 Step 1 verbatim 测试（STRICT_STUBS）矛盾（已实测复现 Errors:1）→ 测试优先，生产改三风格独立 try-catch，InOrder 不变
   - deferred minors: ① findByTradeDate/save 裸抛（brief 原文）② 三处榜单 catch 日志无法区分风格 ③ ScreeningService 未使用 import Pageable（brief 逐字要求）④ runDaily 忽略返回值（符合设计）
   - 测试: 聚焦 33/33、全量 121/121
+- Task 9: complete（commit db30f51 + 勾选；tasks.md 5.1 勾选；reviewer Approved）
+  - deferred minors: ① el-tab-pane 无内容表格外置（brief 逐字）② 网络错误与无数据同显 el-empty（brief 逐字）③ 硬编码 hex 色（brief 原文）
+  - 备注: Step 5 手动核验跳过（可选需后端）；`npm run build` exit 0（npm 沙箱告警，vite.cmd 复核 exit 0）
