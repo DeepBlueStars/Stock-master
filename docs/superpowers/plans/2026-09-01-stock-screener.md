@@ -533,7 +533,7 @@ git commit -m "feat: 新增选股引擎只读数据层 PO 与 Repository"
 - 缺失因子 ≥ 2 → dataIncomplete = true。
 - 名称：`stock_basic_info` 有则用，无则降级为 symbol。
 
-- [ ] **Step 1: 写失败的因子计算测试（Task 2）**
+- [x] **Step 1: 写失败的因子计算测试（Task 2）**
 
 创建 `StockAI/src/test/java/com/xian/stockai/service/ScreeningServiceTest.java`：
 
@@ -744,12 +744,12 @@ class ScreeningServiceTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败（Task 2）**
+- [x] **Step 2: 运行测试确认失败（Task 2）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningServiceTest`
 Expected: COMPILATION ERROR（`StockFactor`/`ScreeningService` 不存在）
 
-- [ ] **Step 3: 创建 StockFactor PO（Task 2）**
+- [x] **Step 3: 创建 StockFactor PO（Task 2）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/po/StockFactor.java`（嵌套文档，同 `RegimeIndicators` 范式，无 `@Document`；字段含设计文档快照要求的原始值 + 因子分 + 理由所需百分位，`longTermRating` 在 Task 4 填充）：
 
@@ -863,7 +863,7 @@ public class StockFactor {
 }
 ```
 
-- [ ] **Step 4: 创建 ScreeningService（因子计算部分）（Task 2）**
+- [x] **Step 4: 创建 ScreeningService（因子计算部分）（Task 2）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/service/ScreeningService.java`：
 
@@ -1085,17 +1085,17 @@ public class ScreeningService {
 
 （注意：`countMissing`、`percentileDesc/Asc` 后续任务不再改动；`ScreeningService` 构造器在 Task 3/4 追加参数。）
 
-- [ ] **Step 5: 运行测试确认通过（Task 2）**
+- [x] **Step 5: 运行测试确认通过（Task 2）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningServiceTest`
 Expected: PASS
 
-- [ ] **Step 6: 运行全量测试（Task 2）**
+- [x] **Step 6: 运行全量测试（Task 2）**
 
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
 
-- [ ] **Step 7: Commit（Task 2）**
+- [x] **Step 7: Commit（Task 2）**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/po/StockFactor.java \
