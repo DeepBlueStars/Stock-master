@@ -1125,7 +1125,7 @@ git commit -m "feat: 实现选股四因子横截面百分位计算引擎"
 
 **风格权重（设计文档默认值，同时写入 yml）：** value = 估值 40% / 成长 20% / 质量 30% / 动量 10%；growth = 10% / 40% / 20% / 30%；balanced = 25% / 25% / 30% / 20%。
 
-- [ ] **Step 1: 写失败的榜单测试（Task 3）**
+- [x] **Step 1: 写失败的榜单测试（Task 3）**
 
 在 `ScreeningServiceTest.java` 中追加（新增 import：`com.xian.stockai.config.ScreeningProperties`、`com.xian.stockai.po.BoardEntry`；`setUp` 中构造器追加 `new ScreeningProperties()`）：
 
@@ -1245,7 +1245,7 @@ git commit -m "feat: 实现选股四因子横截面百分位计算引擎"
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningServiceTest`
 Expected: COMPILATION ERROR（`ScreeningProperties`/`BoardEntry`/`buildBoard` 不存在）
 
-- [ ] **Step 3: 创建 ScreeningProperties 与 BoardEntry（Task 3）**
+- [x] **Step 3: 创建 ScreeningProperties 与 BoardEntry（Task 3）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/config/ScreeningProperties.java`：
 
@@ -1460,7 +1460,7 @@ public class BoardEntry {
     }
 ```
 
-- [ ] **Step 5: application.yml 增加权重配置（Task 3）**
+- [x] **Step 5: application.yml 增加权重配置（Task 3）**
 
 在 `StockAI/src/main/resources/application.yml` 末尾追加（与默认值一致，外置供调参）：
 
@@ -1496,7 +1496,7 @@ Expected: PASS（含 Task 2 既有用例）
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
 
-- [ ] **Step 8: Commit（Task 3）**
+- [x] **Step 8: Commit（Task 3）**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/config/ScreeningProperties.java \
