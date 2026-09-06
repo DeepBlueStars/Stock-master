@@ -4280,4 +4280,4 @@ git commit -m "feat: 选股页新增热点方向与炒作风险展示"
 
 - [x] `cd StockAI && ./mvnw test` 全绿（单元测试覆盖：百分位方向、PE≤0 得 0 分、因子缺失重归一化、缺失 ≥2 不入榜、三风格权重、评级阈值边界 65/45、热点聚合与 <3 过滤、炒作三档标注、AI 失败降级、编排顺序与异常隔离、REST 接口）。
 - [x] `cd StockAI-Console && npm run build` 通过。
-- [ ] 手动端到端（需要本地 MongoDB 已有 etf-service 数据）：启动后端 → `POST /screening/run` → `POST /screening/latest` 与 `POST /hotspot/latest` 返回 state=0 → 前端 `/screener` 页面展示榜单、理由、AI 报告、热点与炒作标注。
+- [x] 手动端到端（需要本地 MongoDB 已有 etf-service 数据）：启动后端 → `POST /screening/run` → `POST /screening/latest` 与 `POST /hotspot/latest` 返回 state=0 → 前端 `/screener` 页面展示榜单、理由、AI 报告、热点与炒作标注。

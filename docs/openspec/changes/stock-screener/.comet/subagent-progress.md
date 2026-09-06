@@ -53,3 +53,4 @@
   - 后端全量 123/123 GREEN；前端 build exit 0
   - ⚠️ acceptance 解读: 快照=每日单文档 screening_scores（整仓覆盖写）；「量比」=成交额占比、「5日涨停数」=5 日内曾涨停家数
   - deferred triage: 覆盖缺口/未用 import/前端重复 markup/hex/GBK 均 OK-to-defer；同日并发依赖唯一索引（单 @Scheduled 串行+save catch 兜底）
+- E2E: complete（2026-09-06 造数据跑通后清理；后端 state=0 三榜+热点+AI success 47/47；前端 /screener 页核验 PASS 无 console 错；种子数据已清理恢复空态）
