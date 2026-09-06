@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -132,5 +133,27 @@ class ScreeningTaskTest {
         assertTrue(result.checkSuccess());
         verify(screeningReportService).attachReport(any(), any(), any());
         verify(screeningResultRepository).save(any(ScreeningResult.class));
+    }
+
+    @Test
+    void runScreeningFailsFastWhenResultLoadFails() {
+        when(stockDailyKlineRepository.existsByTradeDate(anyString())).thenReturn(true);
+        when(screeningService.calculateAndSaveSnapshot(anyString()))
+                .thenReturn(List.of(new StockFactor()));
+        when(screeningResultRepository.findByTradeDate(anyString()))
+                .thenThrow(new RuntimeException("db down"));
+        Result<ScreeningResult> result = task.runScreening();
+        assertFalse(result.checkSuccess());
+        verifyNoInteractions(hotspotService);
+        verifyNoInteractions(screeningReportService);
+        verify(screeningResultRepository, never()).save(any());
+    }
+
+    @Test
+    void runScreeningFailsFastWhenResultSaveFails() {
+        mockHappyPath();
+        doThrow(new RuntimeException("db down")).when(screeningResultRepository).save(any());
+        Result<ScreeningResult> result = task.runScreening();
+        assertFalse(result.checkSuccess());
     }
 }

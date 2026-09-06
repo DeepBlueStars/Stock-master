@@ -53,26 +53,32 @@ public class ScreeningTask {
             return Result.fail("选股因子计算失败");
         }
 
-        ScreeningResult result = screeningResultRepository.findByTradeDate(tradeDate);
-        if (result == null) {
-            result = new ScreeningResult();
+        ScreeningResult result;
+        try {
+            result = screeningResultRepository.findByTradeDate(tradeDate);
+            if (result == null) {
+                result = new ScreeningResult();
+            }
+        } catch (Exception e) {
+            log.error("选股结果读取失败: {}", e.getMessage(), e);
+            return Result.fail("选股结果读取失败");
         }
         result.setTradeDate(tradeDate);
         result.setGeneratedAt(LocalDateTime.now());
         try {
             result.setValueBoard(screeningService.buildBoard(ScreeningService.STYLE_VALUE, factors));
         } catch (Exception e) {
-            log.error("风格榜单生成失败: {}", e.getMessage(), e);
+            log.error("风格榜单生成失败({}): {}", ScreeningService.STYLE_VALUE, e.getMessage(), e);
         }
         try {
             result.setGrowthBoard(screeningService.buildBoard(ScreeningService.STYLE_GROWTH, factors));
         } catch (Exception e) {
-            log.error("风格榜单生成失败: {}", e.getMessage(), e);
+            log.error("风格榜单生成失败({}): {}", ScreeningService.STYLE_GROWTH, e.getMessage(), e);
         }
         try {
             result.setBalancedBoard(screeningService.buildBoard(ScreeningService.STYLE_BALANCED, factors));
         } catch (Exception e) {
-            log.error("风格榜单生成失败: {}", e.getMessage(), e);
+            log.error("风格榜单生成失败({}): {}", ScreeningService.STYLE_BALANCED, e.getMessage(), e);
         }
         HotspotResult hotspot = null;
         try {
@@ -85,7 +91,12 @@ public class ScreeningTask {
         } catch (Exception e) {
             log.error("AI综合报告生成失败: {}", e.getMessage(), e);
         }
-        screeningResultRepository.save(result);
+        try {
+            screeningResultRepository.save(result);
+        } catch (Exception e) {
+            log.error("选股结果入库失败: {}", e.getMessage(), e);
+            return Result.fail("选股结果入库失败");
+        }
         log.info("选股结果已入库: tradeDate={}", tradeDate);
         return Result.success(result);
     }
