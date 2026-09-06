@@ -4,8 +4,8 @@
 - review_mode: standard
 - tdd_mode: tdd
 - build_mode: subagent-driven-development
-- 当前 task: 全部完成 — build 阶段收尾（最终 review clean，待 guard 推进 verify）
-- 当前阶段: final review 完成（clean）
+- 当前 task: 全部完成 — build guard 已通过并推进 phase=verify（verify_result=pending）
+- 当前阶段: 等待官方 comet-verify 会话验收（本模型无法加载该技能，用户将切换会话走官方流程）
 - model: mid-tier（GLM 默认会话模型）
 - base: 0b0e803（整分支起点）
 - 实现提交: Task 8 = 4f2a287；Task 9 = db30f51；Task 10 = 7b5f223；final fix = 26bf9da
