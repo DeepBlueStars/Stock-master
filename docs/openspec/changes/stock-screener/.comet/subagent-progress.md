@@ -4,14 +4,14 @@
 - review_mode: standard
 - tdd_mode: tdd
 - build_mode: subagent-driven-development
-- 当前 task: 全部计划任务完成（Task 1-10）— 进入最终整分支 review
-- 当前阶段: final review（review_mode=standard）
+- 当前 task: 全部完成 — build 阶段收尾（最终 review clean，待 guard 推进 verify）
+- 当前阶段: final review 完成（clean）
 - model: mid-tier（GLM 默认会话模型）
-- base: 7b5f223（Task 10 实现提交）
-- 实现提交: Task 8 = 4f2a287；Task 9 = db30f51；Task 10 = 7b5f223
-- RED/GREEN 证据: Task 8 聚焦 33/33、全量 121/121 GREEN；Task 9/10 `vite.cmd build` exit 0
+- base: 0b0e803（整分支起点）
+- 实现提交: Task 8 = 4f2a287；Task 9 = db30f51；Task 10 = 7b5f223；final fix = 26bf9da
+- RED/GREEN 证据: 后端全量 123/123 GREEN（final fix 后）；前端 Task 9/10 `vite.cmd build` exit 0
 - 风险信号: 无（实现者自报无）
-- 审查轮次: 0
+- 审查轮次: 10 task reviews + 1 final whole-branch review + 1 scoped re-review（全部 clean）
 
 ## 已完成任务记录
 
@@ -48,3 +48,8 @@
 - Task 10: complete（commit 7b5f223 + 勾选；tasks.md 5.2 勾选；reviewer Approved）
   - deferred minors: ① 行业/概念两表模板重复（brief 逐字要求）② top-stock nowrap 潜在溢出（brief 原文）
   - 备注: 单文件 StockScreener.vue 117+/1-；Step 5 手动核验跳过；`vite.cmd build` exit 0
+- Final review: complete（整分支 0b0e803..HEAD + fix 26bf9da）
+  - 初评 ❌ 1 Important（ScreeningTask findByTradeDate/save 未防护裸抛）→ fix 26bf9da（catch+log+Result.fail+榜单日志带风格 key+2 测试）→ scoped re-review clean
+  - 后端全量 123/123 GREEN；前端 build exit 0
+  - ⚠️ acceptance 解读: 快照=每日单文档 screening_scores（整仓覆盖写）；「量比」=成交额占比、「5日涨停数」=5 日内曾涨停家数
+  - deferred triage: 覆盖缺口/未用 import/前端重复 markup/hex/GBK 均 OK-to-defer；同日并发依赖唯一索引（单 @Scheduled 串行+save catch 兜底）
