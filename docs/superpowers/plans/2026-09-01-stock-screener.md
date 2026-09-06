@@ -1,4 +1,4 @@
-﻿---
+---
 change: stock-screener
 design-doc: docs/superpowers/specs/2026-09-01-stock-screener-design.md
 base-ref: 0b0e80302676ab7af625945bbe27012bf6c846e6
@@ -1240,7 +1240,7 @@ git commit -m "feat: 实现选股四因子横截面百分位计算引擎"
     }
 ```
 
-- [ ] **Step 2: 运行测试确认失败（Task 3）**
+- [x] **Step 2: 运行测试确认失败（Task 3）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningServiceTest`
 Expected: COMPILATION ERROR（`ScreeningProperties`/`BoardEntry`/`buildBoard` 不存在）
@@ -1359,7 +1359,7 @@ public class BoardEntry {
 }
 ```
 
-- [ ] **Step 4: 扩展 ScreeningService（Task 3）**
+- [x] **Step 4: 扩展 ScreeningService（Task 3）**
 
 在 `ScreeningService.java` 中：
 1. import 增加 `com.xian.stockai.config.ScreeningProperties`、`com.xian.stockai.po.BoardEntry`、`java.util.Comparator`。
@@ -1486,12 +1486,12 @@ screening:
       momentum: 0.20
 ```
 
-- [ ] **Step 6: 运行测试确认通过（Task 3）**
+- [x] **Step 6: 运行测试确认通过（Task 3）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningServiceTest`
 Expected: PASS（含 Task 2 既有用例）
 
-- [ ] **Step 7: 运行全量测试（Task 3）**
+- [x] **Step 7: 运行全量测试（Task 3）**
 
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
@@ -1624,7 +1624,7 @@ setUp 最终形态：
     }
 ```
 
-- [ ] **Step 2: 运行测试确认失败（Task 4）**
+- [x] **Step 2: 运行测试确认失败（Task 4）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningServiceTest,ScreenerPoTest`
 Expected: COMPILATION ERROR（`ScreeningScoreRecord` 不存在）
@@ -1776,12 +1776,12 @@ public interface ScreeningScoreRecordRepository extends MongoRepository<Screenin
     }
 ```
 
-- [ ] **Step 5: 运行测试确认通过（Task 4）**
+- [x] **Step 5: 运行测试确认通过（Task 4）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningServiceTest,ScreenerPoTest`
 Expected: PASS
 
-- [ ] **Step 6: 运行全量测试（Task 4）**
+- [x] **Step 6: 运行全量测试（Task 4）**
 
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
@@ -1825,7 +1825,7 @@ git commit -m "feat: 实现长期价值评级与选股全量快照入库"
 - 个股 K 线不足 6 条（5 日窗口需要 6 个收盘点）→ 该股不参与热点聚合。
 - 快照缺失（`findByTradeDate` 为 null）→ 返回 null 并记日志。
 
-- [ ] **Step 1: 写失败的热点测试（Task 5）**
+- [x] **Step 1: 写失败的热点测试（Task 5）**
 
 在 `ScreenerPoTest.java` 追加：
 
@@ -2071,12 +2071,12 @@ class HotspotServiceTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败（Task 5）**
+- [x] **Step 2: 运行测试确认失败（Task 5）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=HotspotServiceTest,ScreenerPoTest`
 Expected: COMPILATION ERROR（`HotspotResult` 等不存在）
 
-- [ ] **Step 3: 创建热点 PO 与 Repository（Task 5）**
+- [x] **Step 3: 创建热点 PO 与 Repository（Task 5）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/po/HotspotStock.java`：
 
@@ -2260,7 +2260,7 @@ public interface HotspotResultRepository extends MongoRepository<HotspotResult, 
 }
 ```
 
-- [ ] **Step 4: 创建 HotspotService（聚合 + 热度，炒作标注在 Task 6 接入）**
+- [x] **Step 4: 创建 HotspotService（聚合 + 热度，炒作标注在 Task 6 接入）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/service/HotspotService.java`：
 
@@ -2584,7 +2584,7 @@ public class HotspotService {
 Run: `cd StockAI && ./mvnw test -Dtest=HotspotServiceTest,ScreenerPoTest`
 Expected: PASS
 
-- [ ] **Step 6: 运行全量测试（Task 5）**
+- [x] **Step 6: 运行全量测试（Task 5）**
 
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
@@ -2620,7 +2620,7 @@ git commit -m "feat: 实现行业/概念热点聚合与热度得分识别"
 - 其余（含无质量数据）→ `NEUTRAL`（中性）
 - `hypeBasis` 输出依据文本："质量中位数 X，热度得分 Y"。
 
-- [ ] **Step 1: 写失败的测试（Task 6）**
+- [x] **Step 1: 写失败的测试（Task 6）**
 
 在 `HotspotServiceTest.java` 追加：
 
@@ -2680,12 +2680,12 @@ git commit -m "feat: 实现行业/概念热点聚合与热度得分识别"
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败（Task 6）**
+- [x] **Step 2: 运行测试确认失败（Task 6）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=HotspotServiceTest`
 Expected: COMPILATION ERROR（`hypeLabel`/`medianQuality` 不存在）
 
-- [ ] **Step 3: 在 HotspotService 中实现标注（Task 6）**
+- [x] **Step 3: 在 HotspotService 中实现标注（Task 6）**
 
 在 `HotspotService.java` 追加（类常量区追加三个 hype 常量；方法追加在 `toDirections` 之后）：
 
@@ -2730,7 +2730,7 @@ Expected: COMPILATION ERROR（`hypeLabel`/`medianQuality` 不存在）
     }
 ```
 
-- [ ] **Step 4: 在 toDirections 第二遍循环中接入标注（Task 6）**
+- [x] **Step 4: 在 toDirections 第二遍循环中接入标注（Task 6）**
 
 修改 `HotspotService.toDirections` 的第二遍循环（Task 5 已建立 `raw`/`aggList` 平行列表），在 `d.setHotScore(...);` 之后、循环体结束前追加：
 
@@ -2753,7 +2753,7 @@ Expected: COMPILATION ERROR（`hypeLabel`/`medianQuality` 不存在）
 Run: `cd StockAI && ./mvnw test -Dtest=HotspotServiceTest`
 Expected: PASS
 
-- [ ] **Step 6: 运行全量测试（Task 6）**
+- [x] **Step 6: 运行全量测试（Task 6）**
 
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
@@ -2786,7 +2786,7 @@ git commit -m "feat: 实现热点炒作风险三档标注与依据输出"
 
 **报告要求（设计文档）：** prompt 注入三风格榜 Top 20 精简表、热点 Top 10 及炒作标注、评分统计（池规模 + 因子均分）；失败 catch → `buildFallbackReport()` 纯量化文本（含评分依据与炒作风险提示），`ai_report_status=fallback`；榜单与热点不受影响。
 
-- [ ] **Step 1: 写失败的测试（Task 7）**
+- [x] **Step 1: 写失败的测试（Task 7）**
 
 在 `ScreenerPoTest.java` 追加：
 
@@ -2976,12 +2976,12 @@ class ScreeningReportServiceTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败（Task 7）**
+- [x] **Step 2: 运行测试确认失败（Task 7）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningReportServiceTest,ScreenerPoTest`
 Expected: COMPILATION ERROR（`ScreeningResult` 等不存在）
 
-- [ ] **Step 3: 创建 ScreeningResult 与 Repository（Task 7）**
+- [x] **Step 3: 创建 ScreeningResult 与 Repository（Task 7）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/po/ScreeningResult.java`：
 
@@ -3070,7 +3070,7 @@ public interface ScreeningResultRepository extends MongoRepository<ScreeningResu
 }
 ```
 
-- [ ] **Step 4: 创建 ScreeningReportService（Task 7）**
+- [x] **Step 4: 创建 ScreeningReportService（Task 7）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/service/ScreeningReportService.java`：
 
@@ -3236,7 +3236,7 @@ public class ScreeningReportService {
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningReportServiceTest,ScreenerPoTest`
 Expected: PASS
 
-- [ ] **Step 6: 运行全量测试（Task 7）**
+- [x] **Step 6: 运行全量测试（Task 7）**
 
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS
@@ -3271,7 +3271,7 @@ git commit -m "feat: 实现选股 AI 综合报告与失败降级量化文本"
 
 **编排规则（设计文档）：** cron `${screening.cron:0 0 18 * * MON-FRI}`；当日 `stock_daily_kline` 无数据则记日志跳过；顺序：因子快照 → 榜单 → 热点 → AI 报告 → 入库；任一步骤异常记日志，不阻断已完成步骤产物入库（因子失败则整体终止）。
 
-- [ ] **Step 1: 写失败的测试（Task 8）**
+- [x] **Step 1: 写失败的测试（Task 8）**
 
 创建 `StockAI/src/test/java/com/xian/stockai/task/ScreeningTaskTest.java`：
 
@@ -3612,7 +3612,7 @@ setUp 最终形态：
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningTaskTest,ScreeningControllerTest,HotspotControllerTest,ScreeningServiceTest`
 Expected: COMPILATION ERROR（`ScreeningTask` 等不存在）
 
-- [ ] **Step 3: 创建 ScreeningTask（Task 8）**
+- [x] **Step 3: 创建 ScreeningTask（Task 8）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/task/ScreeningTask.java`：
 
@@ -3703,7 +3703,7 @@ public class ScreeningTask {
 }
 ```
 
-- [ ] **Step 4: 创建请求 VO 与两个 Controller（Task 8）**
+- [x] **Step 4: 创建请求 VO 与两个 Controller（Task 8）**
 
 创建 `StockAI/src/main/java/com/xian/stockai/vo/ScreeningHistoryRequest.java`：
 
@@ -3817,12 +3817,12 @@ screening:
     # （weights 内容保持不变）
 ```
 
-- [ ] **Step 7: 运行测试确认通过（Task 8）**
+- [x] **Step 7: 运行测试确认通过（Task 8）**
 
 Run: `cd StockAI && ./mvnw test -Dtest=ScreeningTaskTest,ScreeningControllerTest,HotspotControllerTest,ScreeningServiceTest`
 Expected: PASS
 
-- [ ] **Step 8: 运行全量测试（Task 8）**
+- [x] **Step 8: 运行全量测试（Task 8）**
 
 Run: `cd StockAI && ./mvnw test`
 Expected: PASS（含全部既有测试）
@@ -4236,7 +4236,7 @@ onMounted(() => {
     </el-card>
 ```
 
-- [ ] **Step 3: 样式追加（Task 10）**
+- [x] **Step 3: 样式追加（Task 10）**
 
 在 `<style scoped>` 末尾追加：
 
@@ -4278,6 +4278,6 @@ git commit -m "feat: 选股页新增热点方向与炒作风险展示"
 
 ## 集成验证（全部任务完成后）
 
-- [ ] `cd StockAI && ./mvnw test` 全绿（单元测试覆盖：百分位方向、PE≤0 得 0 分、因子缺失重归一化、缺失 ≥2 不入榜、三风格权重、评级阈值边界 65/45、热点聚合与 <3 过滤、炒作三档标注、AI 失败降级、编排顺序与异常隔离、REST 接口）。
-- [ ] `cd StockAI-Console && npm run build` 通过。
+- [x] `cd StockAI && ./mvnw test` 全绿（单元测试覆盖：百分位方向、PE≤0 得 0 分、因子缺失重归一化、缺失 ≥2 不入榜、三风格权重、评级阈值边界 65/45、热点聚合与 <3 过滤、炒作三档标注、AI 失败降级、编排顺序与异常隔离、REST 接口）。
+- [x] `cd StockAI-Console && npm run build` 通过。
 - [ ] 手动端到端（需要本地 MongoDB 已有 etf-service 数据）：启动后端 → `POST /screening/run` → `POST /screening/latest` 与 `POST /hotspot/latest` 返回 state=0 → 前端 `/screener` 页面展示榜单、理由、AI 报告、热点与炒作标注。
