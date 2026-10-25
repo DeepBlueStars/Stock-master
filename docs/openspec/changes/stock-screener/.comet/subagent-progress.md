@@ -54,3 +54,18 @@
   - ⚠️ acceptance 解读: 快照=每日单文档 screening_scores（整仓覆盖写）；「量比」=成交额占比、「5日涨停数」=5 日内曾涨停家数
   - deferred triage: 覆盖缺口/未用 import/前端重复 markup/hex/GBK 均 OK-to-defer；同日并发依赖唯一索引（单 @Scheduled 串行+save catch 兜底）
 - E2E: complete（2026-09-06 造数据跑通后清理；后端 state=0 三榜+热点+AI success 47/47；前端 /screener 页核验 PASS 无 console 错；种子数据已清理恢复空态）
+
+## verify-fail 修复第 1 轮（verify_failures=1）
+
+- 触发: comet-verify（full）代码审查发现 3 个 IMPORTANT
+- 当前 task: 6.2 修复 K 线窗口未按 tradeDate 设上界
+- 当前阶段: implementing
+- base: c9ea0eb（本轮修复起点）
+- 6.1: complete（commit 4f51082，review_mode=standard 非风险任务免 reviewer；diff 173 行；RED 26 tests/7 failures → GREEN 26/26；全量 130/130）
+- RED/GREEN 证据: 6.1 RED `mvn test -Dtest=ScreeningServiceTest` 7 failures（缺失子指标计 0 分）；GREEN 26/26，全量 130/130
+- 风险信号: 6.1 无
+- 审查轮次: 0
+- 待修复清单:
+  1. 6.1 ScreeningService 子指标 null 被计 0 分（重归一化 / countMissing / buildReason）
+  2. 6.2 K 线查询未限定 tradeDate 上界（ScreeningService、HotspotService、ScreeningTask 覆盖率校验）
+  3. 6.3 trade_date 唯一索引未生效 + find-then-save 非原子（三个 PO + 保存逻辑）
