@@ -89,6 +89,54 @@ class ScreeningServiceTest {
         return f;
     }
 
+    /** 财务字段可空版本的构造器，null 表示该原始指标缺失。 */
+    private StockFundamentals fundWith(String reportDate, String pe, String pb, String roe,
+                                       String revenueYoy, String profitYoy, String grossMargin) {
+        StockFundamentals f = new StockFundamentals();
+        f.setReportDate(reportDate);
+        if (pe != null) {
+            f.setPe(new BigDecimal(pe));
+        }
+        if (pb != null) {
+            f.setPb(new BigDecimal(pb));
+        }
+        if (roe != null) {
+            f.setRoe(new BigDecimal(roe));
+        }
+        if (revenueYoy != null) {
+            f.setRevenueYoy(new BigDecimal(revenueYoy));
+        }
+        if (profitYoy != null) {
+            f.setProfitYoy(new BigDecimal(profitYoy));
+        }
+        if (grossMargin != null) {
+            f.setGrossMargin(new BigDecimal(grossMargin));
+        }
+        return f;
+    }
+
+    /**
+     * 4 只股票的小池（P/Q/R/S），K 线均充足（动量非缺失）；Q 的原始指标按参数注入，null 表示缺失。
+     */
+    private void mockSubMetricPool(String qPe, String qPb, String qRoe,
+                                   String qRevenueYoy, String qProfitYoy, String qGrossMargin) {
+        List<String> symbols = List.of("P", "Q", "R", "S");
+        when(indexConstituentsRepository.findAll()).thenReturn(
+                symbols.stream().map(this::constituent).collect(Collectors.toList()));
+        when(stockBasicInfoRepository.findAll()).thenReturn(
+                symbols.stream().map(s -> basic(s, s + "公司")).collect(Collectors.toList()));
+        when(stockFundamentalsRepository.findTopBySymbolOrderByReportDateDesc("P"))
+                .thenReturn(fundWith("2026-06-30", "8", "1", "25", "30", "40", "50"));
+        when(stockFundamentalsRepository.findTopBySymbolOrderByReportDateDesc("Q"))
+                .thenReturn(fundWith("2026-06-30", qPe, qPb, qRoe, qRevenueYoy, qProfitYoy, qGrossMargin));
+        when(stockFundamentalsRepository.findTopBySymbolOrderByReportDateDesc("R"))
+                .thenReturn(fundWith("2026-06-30", "12", "3", "15", "10", "20", "20"));
+        when(stockFundamentalsRepository.findTopBySymbolOrderByReportDateDesc("S"))
+                .thenReturn(fundWith("2026-06-30", "15", "2", "10", "15", "10", "35"));
+        symbols.forEach(s -> when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc(s))
+                .thenReturn(descendingKlines(s, 21, "10", "12", "100000")));
+    }
+
     /** 生成 count 条降序 K 线（index 0 = 最新 close=latestClose，index count-1 = 最旧 close=oldestClose，等差）。 */
     private List<StockDailyKline> descendingKlines(String symbol, int count,
                                                    String oldestClose, String latestClose, String amount) {
@@ -164,7 +212,8 @@ class ScreeningServiceTest {
         assertEquals(0, map.get("B").getValuation());
         // C: PE 子分 0，PB=2 在 [1,3,2,2] 反向百分位=33 → valuation = 0*0.5 + 33*0.5 = 16.5 → 17
         assertEquals(17, map.get("C").getValuation());
-        assertEquals(0, map.get("C").getPePct());
+        // PE ≤ 0 不参与百分位，pePct 为 null（入选理由不输出 PE 片段）
+        assertNull(map.get("C").getPePct());
     }
 
     @Test
@@ -391,5 +440,66 @@ class ScreeningServiceTest {
     void historyUsesPageAndSize() {
         service.history(2, 5);
         verify(screeningResultRepository).findAllByOrderByTradeDateDesc(PageRequest.of(1, 5));
+    }
+
+    // ==== Task 6.1: 缺失子指标不计 0 分，按剩余子权重重归一化 ====
+
+    @Test
+    void qualityFallsBackToGrossMarginWhenRoeMissing() {
+        mockSubMetricPool("10", "2", null, "20", "30", "30");
+        StockFactor q = factorsBySymbol("2026-09-01").get("Q");
+        // 毛利率池 [50,30,20,35]，30 的正向百分位 = 1/3*100 = 33；仅剩毛利率 → 100% 子权重
+        assertEquals(33, q.getQuality());
+        assertNull(q.getRoePct());
+        assertFalse(Boolean.TRUE.equals(q.getDataIncomplete()));
+    }
+
+    @Test
+    void qualityIsNullWhenRoeAndGrossMarginBothMissing() {
+        mockSubMetricPool("10", "2", null, "20", "30", null);
+        StockFactor q = factorsBySymbol("2026-09-01").get("Q");
+        assertNull(q.getQuality());
+        assertNull(q.getRoePct());
+        // 仅缺质量 1 个因子，不算 dataIncomplete
+        assertFalse(Boolean.TRUE.equals(q.getDataIncomplete()));
+    }
+
+    @Test
+    void growthFallsBackToProfitYoyWhenRevenueMissing() {
+        mockSubMetricPool("10", "2", "18", null, "30", "28");
+        StockFactor q = factorsBySymbol("2026-09-01").get("Q");
+        // 净利增速池 [40,30,20,10]，30 的正向百分位 = 2/3*100 = 67；仅剩净利增速 → 100% 子权重
+        assertEquals(67, q.getGrowth());
+    }
+
+    @Test
+    void valuationFallsBackToPbWhenPeMissing() {
+        mockSubMetricPool(null, "2", "18", "20", "30", "28");
+        StockFactor q = factorsBySymbol("2026-09-01").get("Q");
+        // PB 池 [1,2,3,2]，2 的反向百分位 = 1/3*100 = 33；仅剩 PB → 100% 子权重
+        assertEquals(33, q.getValuation());
+        assertNull(q.getPePct());
+    }
+
+    @Test
+    void dataIncompleteWhenTwoOrMoreFactorsMissing() {
+        mockSubMetricPool(null, null, null, "20", "30", null);
+        StockFactor q = factorsBySymbol("2026-09-01").get("Q");
+        // PE/PB 全缺 → 估值 null；ROE/毛利率全缺 → 质量 null
+        assertNull(q.getValuation());
+        assertNull(q.getQuality());
+        assertNotNull(q.getGrowth());
+        assertNotNull(q.getMomentum());
+        assertTrue(Boolean.TRUE.equals(q.getDataIncomplete()));
+    }
+
+    @Test
+    void buildReasonOmitsMissingAndInvalidMetrics() {
+        mockSubMetricPool("-5", "2", null, "20", "30", "28");
+        StockFactor q = factorsBySymbol("2026-09-01").get("Q");
+        String reason = ScreeningService.buildReason(q);
+        assertFalse(reason.contains("ROE"));
+        assertFalse(reason.contains("PE"));
+        assertTrue(reason.contains("20 日涨幅"));
     }
 }

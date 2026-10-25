@@ -188,30 +188,51 @@ public class ScreeningService {
         for (StockFactor f : factors) {
             boolean fundUsable = f.getDataDate() != null;
             if (fundUsable) {
-                int pePct = (f.getPe() != null && f.getPe().compareTo(ZERO) > 0)
-                        ? percentileAsc(peValues, f.getPe()) : 0;
-                int pbPct = (f.getPb() != null && f.getPb().compareTo(ZERO) > 0)
-                        ? percentileAsc(pbValues, f.getPb()) : 0;
+                Integer pePct = (f.getPe() != null && f.getPe().compareTo(ZERO) > 0)
+                        ? percentileAsc(peValues, f.getPe()) : null;
+                Integer pbPct = (f.getPb() != null && f.getPb().compareTo(ZERO) > 0)
+                        ? percentileAsc(pbValues, f.getPb()) : null;
+                boolean pePresent = f.getPe() != null;
+                boolean pbPresent = f.getPb() != null;
+                if (pePresent || pbPresent) {
+                    // PE ≤ 0 子项得 0 分；缺失子项不参与，剩余子项按 100% 权重
+                    int peScore = pePct == null ? 0 : pePct;
+                    int pbScore = pbPct == null ? 0 : pbPct;
+                    int valuation;
+                    if (pePresent && pbPresent) {
+                        valuation = roundToInt(
+                                VALUATION_PE_WEIGHT.multiply(BigDecimal.valueOf(peScore))
+                                        .add(VALUATION_PB_WEIGHT.multiply(BigDecimal.valueOf(pbScore)))
+                                        .doubleValue());
+                    } else {
+                        valuation = pePresent ? peScore : pbScore;
+                    }
+                    f.setValuation(valuation);
+                }
                 f.setPePct(pePct);
-                f.setValuation(roundToInt(
-                        VALUATION_PE_WEIGHT.multiply(BigDecimal.valueOf(pePct))
-                                .add(VALUATION_PB_WEIGHT.multiply(BigDecimal.valueOf(pbPct)))
-                                .doubleValue()));
 
-                int revPct = f.getRevenueYoy() == null ? 0 : percentileDesc(revYoyValues, f.getRevenueYoy());
-                int proPct = f.getProfitYoy() == null ? 0 : percentileDesc(profitYoyValues, f.getProfitYoy());
-                f.setGrowth(roundToInt(
-                        GROWTH_REVENUE_WEIGHT.multiply(BigDecimal.valueOf(revPct))
-                                .add(GROWTH_PROFIT_WEIGHT.multiply(BigDecimal.valueOf(proPct)))
-                                .doubleValue()));
+                Integer revPct = f.getRevenueYoy() == null ? null : percentileDesc(revYoyValues, f.getRevenueYoy());
+                Integer proPct = f.getProfitYoy() == null ? null : percentileDesc(profitYoyValues, f.getProfitYoy());
+                if (revPct != null || proPct != null) {
+                    int growth = (revPct != null && proPct != null)
+                            ? roundToInt(GROWTH_REVENUE_WEIGHT.multiply(BigDecimal.valueOf(revPct))
+                                    .add(GROWTH_PROFIT_WEIGHT.multiply(BigDecimal.valueOf(proPct)))
+                                    .doubleValue())
+                            : (revPct != null ? revPct : proPct);
+                    f.setGrowth(growth);
+                }
 
-                int roePct = f.getRoe() == null ? 0 : percentileDesc(roeValues, f.getRoe());
-                int gmPct = f.getGrossMargin() == null ? 0 : percentileDesc(gmValues, f.getGrossMargin());
+                Integer roePct = f.getRoe() == null ? null : percentileDesc(roeValues, f.getRoe());
+                Integer gmPct = f.getGrossMargin() == null ? null : percentileDesc(gmValues, f.getGrossMargin());
                 f.setRoePct(roePct);
-                f.setQuality(roundToInt(
-                        QUALITY_ROE_WEIGHT.multiply(BigDecimal.valueOf(roePct))
-                                .add(QUALITY_GM_WEIGHT.multiply(BigDecimal.valueOf(gmPct)))
-                                .doubleValue()));
+                if (roePct != null || gmPct != null) {
+                    int quality = (roePct != null && gmPct != null)
+                            ? roundToInt(QUALITY_ROE_WEIGHT.multiply(BigDecimal.valueOf(roePct))
+                                    .add(QUALITY_GM_WEIGHT.multiply(BigDecimal.valueOf(gmPct)))
+                                    .doubleValue())
+                            : (roePct != null ? roePct : gmPct);
+                    f.setQuality(quality);
+                }
             }
             if (f.getMomentumReturn() != null) {
                 f.setMomentumPct(percentileDesc(momentumReturns, f.getMomentumReturn()));
