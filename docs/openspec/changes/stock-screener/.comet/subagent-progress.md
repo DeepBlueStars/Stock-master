@@ -58,12 +58,13 @@
 ## verify-fail 修复第 1 轮（verify_failures=1）
 
 - 触发: comet-verify（full）代码审查发现 3 个 IMPORTANT
-- 当前 task: 6.2 修复 K 线窗口未按 tradeDate 设上界
+- 当前 task: 6.3 修复 trade_date 唯一索引未生效与并发重复写入
 - 当前阶段: implementing
 - base: c9ea0eb（本轮修复起点）
 - 6.1: complete（commit 4f51082，review_mode=standard 非风险任务免 reviewer；diff 173 行；RED 26 tests/7 failures → GREEN 26/26；全量 130/130）
-- RED/GREEN 证据: 6.1 RED `mvn test -Dtest=ScreeningServiceTest` 7 failures（缺失子指标计 0 分）；GREEN 26/26，全量 130/130
-- 风险信号: 6.1 无
+- 6.2: complete（commit f020eeb，非风险任务免 reviewer；diff 198 行；RED 48 tests 失败 → GREEN 48/48；全量 134/134）
+- RED/GREEN 证据: 6.1 缺子指标计 0 分失败→26/26；6.2 日期上界查询 RED 编译/断言失败→聚焦 48/48、全量 134/134
+- 风险信号: 6.1 无；6.2 无；6.3 预期命中「并发」（需每任务 reviewer，1 轮）
 - 审查轮次: 0
 - 待修复清单:
   1. 6.1 ScreeningService 子指标 null 被计 0 分（重归一化 / countMissing / buildReason）
