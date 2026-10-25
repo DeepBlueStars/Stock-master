@@ -12,12 +12,17 @@ import com.xian.stockai.po.ScreeningScoreRecord;
 import com.xian.stockai.po.StockDailyKline;
 import com.xian.stockai.po.StockFactor;
 import com.xian.stockai.po.StockIndustryConcept;
+import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.convert.MongoConverter;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,7 +31,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,13 +52,35 @@ class HotspotServiceTest {
     private ScreeningScoreRecordRepository screeningScoreRecordRepository;
     @Mock
     private HotspotResultRepository hotspotResultRepository;
+    @Mock
+    private MongoTemplate mongoTemplate;
+    @Mock
+    private MongoConverter mongoConverter;
 
     private HotspotService service;
 
     @BeforeEach
     void setUp() {
         service = new HotspotService(indexConstituentsRepository, stockIndustryConceptRepository,
-                stockDailyKlineRepository, screeningScoreRecordRepository, hotspotResultRepository);
+                stockDailyKlineRepository, screeningScoreRecordRepository, hotspotResultRepository,
+                mongoTemplate);
+    }
+
+    /** 模拟 POJO → Document 转换，供 upsert 写入路径使用。 */
+    private void stubUpsertConversion() {
+        when(mongoTemplate.getConverter()).thenReturn(mongoConverter);
+        doAnswer(invocation -> {
+            HotspotResult result = invocation.getArgument(0);
+            Document doc = invocation.getArgument(1);
+            if (result.getId() != null) {
+                doc.put("_id", result.getId());
+            }
+            doc.put("trade_date", result.getTradeDate());
+            doc.put("generated_at", result.getGeneratedAt());
+            doc.put("industries", result.getIndustries());
+            doc.put("concepts", result.getConcepts());
+            return null;
+        }).when(mongoConverter).write(any(HotspotResult.class), any(Document.class));
     }
 
     /** 6 条降序 K 线：最新 close=latest，其余 close=base，amount 恒定，最新一根为 2026-09-01。 */
@@ -97,6 +128,7 @@ class HotspotServiceTest {
     }
 
     private void mockPool() {
+        stubUpsertConversion();
         when(indexConstituentsRepository.findAll()).thenReturn(List.of(
                 constituent("A"), constituent("B"), constituent("C"),
                 constituent("D"), constituent("E"),
@@ -151,7 +183,7 @@ class HotspotServiceTest {
         assertEquals(2, result.getIndustries().size());
         // 概念维度：消费(A,B,C) 保留；科技(D,E) 仅 2 只 → 过滤
         assertEquals(1, result.getConcepts().size());
-        verify(hotspotResultRepository).save(result);
+        verify(mongoTemplate).upsert(any(Query.class), any(Update.class), eq(HotspotResult.class));
     }
 
     @Test
@@ -196,14 +228,18 @@ class HotspotServiceTest {
     @Test
     void buildAndSaveUpsertsByTradeDate() {
         mockPool();
-        HotspotResult existing = new HotspotResult();
-        existing.setId("existing-id");
-        when(hotspotResultRepository.findByTradeDate("2026-09-01")).thenReturn(existing);
         HotspotResult result = service.buildAndSave("2026-09-01");
-        ArgumentCaptor<HotspotResult> captor = ArgumentCaptor.forClass(HotspotResult.class);
-        verify(hotspotResultRepository).save(captor.capture());
-        assertEquals("existing-id", captor.getValue().getId());
+        ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+        ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+        verify(mongoTemplate).upsert(queryCaptor.capture(), updateCaptor.capture(),
+                eq(HotspotResult.class));
+        assertEquals("2026-09-01", queryCaptor.getValue().getQueryObject().getString("trade_date"));
+        Document set = (Document) updateCaptor.getValue().getUpdateObject().get("$set");
+        assertEquals("2026-09-01", set.getString("trade_date"));
+        assertNotNull(set.get("industries"));
+        assertFalse(set.containsKey("_id"));
         assertEquals("2026-09-01", result.getTradeDate());
+        verify(hotspotResultRepository, never()).save(any());
     }
 
     @Test

@@ -3,7 +3,6 @@ package com.xian.stockai.service;
 import com.xian.stockai.config.ScreeningProperties;
 import com.xian.stockai.dao.IndexConstituentsRepository;
 import com.xian.stockai.dao.ScreeningResultRepository;
-import com.xian.stockai.dao.ScreeningScoreRecordRepository;
 import com.xian.stockai.dao.StockBasicInfoRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockFundamentalsRepository;
@@ -16,6 +15,7 @@ import com.xian.stockai.po.StockDailyKline;
 import com.xian.stockai.po.StockFactor;
 import com.xian.stockai.po.StockFundamentals;
 import com.xian.stockai.vo.Result;
+import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +23,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.convert.MongoConverter;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,7 +38,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,9 +57,11 @@ class ScreeningServiceTest {
     @Mock
     private StockBasicInfoRepository stockBasicInfoRepository;
     @Mock
-    private ScreeningScoreRecordRepository screeningScoreRecordRepository;
-    @Mock
     private ScreeningResultRepository screeningResultRepository;
+    @Mock
+    private MongoTemplate mongoTemplate;
+    @Mock
+    private MongoConverter mongoConverter;
 
     private ScreeningService service;
 
@@ -60,7 +69,23 @@ class ScreeningServiceTest {
     void setUp() {
         service = new ScreeningService(indexConstituentsRepository, stockFundamentalsRepository,
                 stockDailyKlineRepository, stockBasicInfoRepository, new ScreeningProperties(),
-                screeningScoreRecordRepository, screeningResultRepository);
+                screeningResultRepository, mongoTemplate);
+    }
+
+    /** 模拟 POJO → Document 转换，供 upsert 写入路径使用。 */
+    private void stubSnapshotConversion() {
+        when(mongoTemplate.getConverter()).thenReturn(mongoConverter);
+        doAnswer(invocation -> {
+            ScreeningScoreRecord record = invocation.getArgument(0);
+            Document doc = invocation.getArgument(1);
+            if (record.getId() != null) {
+                doc.put("_id", record.getId());
+            }
+            doc.put("trade_date", record.getTradeDate());
+            doc.put("generated_at", record.getGeneratedAt());
+            doc.put("stocks", record.getStocks());
+            return null;
+        }).when(mongoConverter).write(any(ScreeningScoreRecord.class), any(Document.class));
     }
 
     private IndexConstituents constituent(String symbol) {
@@ -429,36 +454,27 @@ class ScreeningServiceTest {
     }
 
     @Test
-    void calculateAndSaveSnapshotFillsRatingsAndUpserts() {
+    void calculateAndSaveSnapshotFillsRatingsAndUpsertsByTradeDate() {
         mockStandardPool();
-        when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(null);
+        stubSnapshotConversion();
         List<StockFactor> factors = service.calculateAndSaveSnapshot("2026-09-01");
-        ArgumentCaptor<ScreeningScoreRecord> captor =
-                ArgumentCaptor.forClass(ScreeningScoreRecord.class);
-        verify(screeningScoreRecordRepository).save(captor.capture());
-        ScreeningScoreRecord saved = captor.getValue();
-        assertEquals("2026-09-01", saved.getTradeDate());
-        assertNotNull(saved.getGeneratedAt());
-        assertEquals(5, saved.getStocks().size());
+        ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+        ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+        verify(mongoTemplate).upsert(queryCaptor.capture(), updateCaptor.capture(),
+                eq(ScreeningScoreRecord.class));
+        assertEquals("2026-09-01", queryCaptor.getValue().getQueryObject().getString("trade_date"));
+        Document set = (Document) updateCaptor.getValue().getUpdateObject().get("$set");
+        assertEquals("2026-09-01", set.getString("trade_date"));
+        assertNotNull(set.get("generated_at"));
+        assertEquals(5, ((List<?>) set.get("stocks")).size());
+        // _id 不进入 $set，避免覆盖或写入空 id
+        assertFalse(set.containsKey("_id"));
         Map<String, StockFactor> bySymbol = factors.stream()
                 .collect(Collectors.toMap(StockFactor::getSymbol, Function.identity()));
         // A：quality=100、growth=100 → 100 → HIGH；B：quality=0、growth=0 → LOW；E：财务超期 → UNKNOWN
         assertEquals(ScreeningService.RATING_HIGH, bySymbol.get("A").getLongTermRating());
         assertEquals(ScreeningService.RATING_LOW, bySymbol.get("B").getLongTermRating());
         assertEquals(ScreeningService.RATING_UNKNOWN, bySymbol.get("E").getLongTermRating());
-    }
-
-    @Test
-    void calculateAndSaveSnapshotReusesExistingIdOnSameDay() {
-        mockStandardPool();
-        ScreeningScoreRecord existing = new ScreeningScoreRecord();
-        existing.setId("existing-id");
-        when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(existing);
-        service.calculateAndSaveSnapshot("2026-09-01");
-        ArgumentCaptor<ScreeningScoreRecord> captor =
-                ArgumentCaptor.forClass(ScreeningScoreRecord.class);
-        verify(screeningScoreRecordRepository).save(captor.capture());
-        assertEquals("existing-id", captor.getValue().getId());
     }
 
     // ==== Task 8: latest / history ====

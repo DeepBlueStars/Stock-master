@@ -3,7 +3,6 @@ package com.xian.stockai.service;
 import com.xian.stockai.config.ScreeningProperties;
 import com.xian.stockai.dao.IndexConstituentsRepository;
 import com.xian.stockai.dao.ScreeningResultRepository;
-import com.xian.stockai.dao.ScreeningScoreRecordRepository;
 import com.xian.stockai.dao.StockBasicInfoRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockFundamentalsRepository;
@@ -17,8 +16,13 @@ import com.xian.stockai.po.StockFactor;
 import com.xian.stockai.po.StockFundamentals;
 import com.xian.stockai.vo.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -63,23 +67,23 @@ public class ScreeningService {
     private final StockDailyKlineRepository stockDailyKlineRepository;
     private final StockBasicInfoRepository stockBasicInfoRepository;
     private final ScreeningProperties screeningProperties;
-    private final ScreeningScoreRecordRepository screeningScoreRecordRepository;
     private final ScreeningResultRepository screeningResultRepository;
+    private final MongoTemplate mongoTemplate;
 
     public ScreeningService(IndexConstituentsRepository indexConstituentsRepository,
                             StockFundamentalsRepository stockFundamentalsRepository,
                             StockDailyKlineRepository stockDailyKlineRepository,
                             StockBasicInfoRepository stockBasicInfoRepository,
                             ScreeningProperties screeningProperties,
-                            ScreeningScoreRecordRepository screeningScoreRecordRepository,
-                            ScreeningResultRepository screeningResultRepository) {
+                            ScreeningResultRepository screeningResultRepository,
+                            MongoTemplate mongoTemplate) {
         this.indexConstituentsRepository = indexConstituentsRepository;
         this.stockFundamentalsRepository = stockFundamentalsRepository;
         this.stockDailyKlineRepository = stockDailyKlineRepository;
         this.stockBasicInfoRepository = stockBasicInfoRepository;
         this.screeningProperties = screeningProperties;
-        this.screeningScoreRecordRepository = screeningScoreRecordRepository;
         this.screeningResultRepository = screeningResultRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     /**
@@ -355,16 +359,23 @@ public class ScreeningService {
         for (StockFactor f : factors) {
             f.setLongTermRating(rateLongTerm(f));
         }
-        ScreeningScoreRecord record = screeningScoreRecordRepository.findByTradeDate(tradeDate);
-        if (record == null) {
-            record = new ScreeningScoreRecord();
-        }
+        ScreeningScoreRecord record = new ScreeningScoreRecord();
         record.setTradeDate(tradeDate);
         record.setGeneratedAt(LocalDateTime.now());
         record.setStocks(factors);
-        screeningScoreRecordRepository.save(record);
+        upsertByTradeDate(record, tradeDate);
         log.info("选股快照已入库: tradeDate={}, 股票数={}", tradeDate, factors.size());
         return factors;
+    }
+
+    private void upsertByTradeDate(ScreeningScoreRecord record, String tradeDate) {
+        Document document = new Document();
+        mongoTemplate.getConverter().write(record, document);
+        document.remove("_id");
+        Update update = new Update();
+        document.forEach(update::set);
+        mongoTemplate.upsert(Query.query(Criteria.where("trade_date").is(tradeDate)), update,
+                ScreeningScoreRecord.class);
     }
 
     public Result<ScreeningResult> latest() {

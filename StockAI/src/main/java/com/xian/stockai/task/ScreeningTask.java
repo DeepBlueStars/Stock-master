@@ -1,7 +1,6 @@
 package com.xian.stockai.task;
 
 import com.xian.stockai.dao.IndexConstituentsRepository;
-import com.xian.stockai.dao.ScreeningResultRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.po.HotspotResult;
 import com.xian.stockai.po.ScreeningResult;
@@ -12,6 +11,11 @@ import com.xian.stockai.service.ScreeningService;
 import com.xian.stockai.vo.Result;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +30,7 @@ public class ScreeningTask {
     private final ScreeningService screeningService;
     private final HotspotService hotspotService;
     private final ScreeningReportService screeningReportService;
-    private final ScreeningResultRepository screeningResultRepository;
+    private final MongoTemplate mongoTemplate;
     private final StockDailyKlineRepository stockDailyKlineRepository;
     private final IndexConstituentsRepository indexConstituentsRepository;
 
@@ -58,16 +62,7 @@ public class ScreeningTask {
             return Result.fail("选股因子计算失败");
         }
 
-        ScreeningResult result;
-        try {
-            result = screeningResultRepository.findByTradeDate(tradeDate);
-            if (result == null) {
-                result = new ScreeningResult();
-            }
-        } catch (Exception e) {
-            log.error("选股结果读取失败: {}", e.getMessage(), e);
-            return Result.fail("选股结果读取失败");
-        }
+        ScreeningResult result = new ScreeningResult();
         result.setTradeDate(tradeDate);
         result.setGeneratedAt(LocalDateTime.now());
         try {
@@ -97,12 +92,22 @@ public class ScreeningTask {
             log.error("AI综合报告生成失败: {}", e.getMessage(), e);
         }
         try {
-            screeningResultRepository.save(result);
+            upsertByTradeDate(result, tradeDate);
         } catch (Exception e) {
             log.error("选股结果入库失败: {}", e.getMessage(), e);
             return Result.fail("选股结果入库失败");
         }
         log.info("选股结果已入库: tradeDate={}", tradeDate);
         return Result.success(result);
+    }
+
+    private void upsertByTradeDate(ScreeningResult result, String tradeDate) {
+        Document document = new Document();
+        mongoTemplate.getConverter().write(result, document);
+        document.remove("_id");
+        Update update = new Update();
+        document.forEach(update::set);
+        mongoTemplate.upsert(Query.query(Criteria.where("trade_date").is(tradeDate)), update,
+                ScreeningResult.class);
     }
 }

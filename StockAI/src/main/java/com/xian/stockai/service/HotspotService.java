@@ -16,6 +16,11 @@ import com.xian.stockai.po.StockIndustryConcept;
 import com.xian.stockai.vo.Result;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -56,6 +61,7 @@ public class HotspotService {
     private final StockDailyKlineRepository stockDailyKlineRepository;
     private final ScreeningScoreRecordRepository screeningScoreRecordRepository;
     private final HotspotResultRepository hotspotResultRepository;
+    private final MongoTemplate mongoTemplate;
 
     /** 成分股量价统计（内存中间对象）。 */
     private static class MemberStats {
@@ -104,12 +110,14 @@ public class HotspotService {
         if (result == null) {
             return null;
         }
-        HotspotResult existing = hotspotResultRepository.findByTradeDate(tradeDate);
-        if (existing != null) {
-            result.setId(existing.getId());
-        }
         result.setGeneratedAt(LocalDateTime.now());
-        hotspotResultRepository.save(result);
+        Document document = new Document();
+        mongoTemplate.getConverter().write(result, document);
+        document.remove("_id");
+        Update update = new Update();
+        document.forEach(update::set);
+        mongoTemplate.upsert(Query.query(Criteria.where("trade_date").is(tradeDate)), update,
+                HotspotResult.class);
         return result;
     }
 
