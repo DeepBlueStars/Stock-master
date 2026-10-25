@@ -58,17 +58,18 @@
 ## verify-fail 修复第 1 轮（verify_failures=1）
 
 - 触发: comet-verify（full）代码审查发现 3 个 IMPORTANT
-- 当前 task: 全部修复任务完成，进入 final-review
-- 当前阶段: final-review
+- 当前 task: 全部完成（6.1/6.2/6.3 + final-fix），build 阶段可退出
+- 当前阶段: done
 - base: c9ea0eb（本轮修复起点）
 - 6.1: complete（commit 4f51082，review_mode=standard 非风险任务免 reviewer；diff 173 行；RED 26 tests/7 failures → GREEN 26/26；全量 130/130）
 - 6.2: complete（commit f020eeb，非风险任务免 reviewer；diff 198 行；RED 48 tests 失败 → GREEN 48/48；全量 134/134）
 - 6.3: complete（commit dd766b6，命中风险信号「并发 + diff>200 行」→ 每任务 reviewer Approved，0 Critical/0 Important；聚焦 48/48，全量 134/134）
+- final-review: 修复波次 c9ea0eb..b4a77b5 审查 → Ready，0 Critical / 0 Important
+- final-fix: complete（commit 99d3001，同日重跑 null 覆盖 → 跳过 null 字段；RED 9 tests/1 failure → GREEN 9/9，全量通过；scoped re-review ADDRESSED、Clean）
 - 6.3 reviewer 遗留 Minor（deferred）: ① upsert 后未回读，`/screening/run` 返回对象 id 为空（前端只消费 tradeDate/boards/aiReport，无消费方）② 三处 upsert 6 行逻辑重复 ③ 索引 ensure 失败静默降级无健康提示 ④ 转换测试用 doAnswer 未覆盖真实转换 ⑤ RED 为编译失败，无行为级 RED
+- final-review 新增 deferred minor: ① `StockDailyKlineRepository` 旧 `findTop21BySymbolOrderByTradeDateDesc` 与 `existsByTradeDate` 已无生产调用（反射测试保留，误用风险）② 覆盖率日志分子为全表计数可能 >100% ③ 并发同日 upsert 仍可能 DuplicateKeyException 无重试 ④ 建议补真实 MongoConverter 冒烟
 - 6.3 Ruling: 返回 id 语义变化 — 已核对前端仅消费 tradeDate/boards/aiReportStatus/aiReport，无消费方依赖 id；接受为 deferred minor，若错代价是调用方若未来依赖 id 需补回读
-- RED/GREEN 证据: 6.1 缺子指标计 0 分失败→26/26；6.2 日期上界查询 RED 编译/断言失败→聚焦 48/48；6.3 RED 编译失败（类/构造器缺失）→聚焦 48/48；全量 134/134
-- 风险信号: 6.1 无；6.2 无；6.3 并发 + diff 287 行
-- 审查轮次: 6.3 task-review 1 轮 Approved
+- Ruling: 最终审查 Minor「同日重跑 null 覆盖」 — 判定为真实数据完整性缺陷（非 Minor），派发 final-fix 修复并 scoped re-review Clean；若错代价是本可延后的小改动提前修复，无行为风险
 - 待修复清单:
   1. 6.1 ScreeningService 子指标 null 被计 0 分（重归一化 / countMissing / buildReason）
   2. 6.2 K 线查询未限定 tradeDate 上界（ScreeningService、HotspotService、ScreeningTask 覆盖率校验）
