@@ -106,7 +106,11 @@ public class ScreeningTask {
         mongoTemplate.getConverter().write(result, document);
         document.remove("_id");
         Update update = new Update();
-        document.forEach(update::set);
+        document.forEach((field, value) -> {
+            if (value != null) {
+                update.set(field, value);
+            }
+        });
         mongoTemplate.upsert(Query.query(Criteria.where("trade_date").is(tradeDate)), update,
                 ScreeningResult.class);
     }

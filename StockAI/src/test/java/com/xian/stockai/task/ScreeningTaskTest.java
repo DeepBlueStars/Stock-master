@@ -16,6 +16,7 @@ import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +27,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.lang.reflect.Method;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -190,6 +192,36 @@ class ScreeningTaskTest {
         verify(hotspotService).buildAndSave(anyString());
         verify(screeningReportService).attachReport(any(), any(), any());
         verify(mongoTemplate).upsert(any(Query.class), any(Update.class), eq(ScreeningResult.class));
+    }
+
+    @Test
+    void runScreeningSkipsNullFieldsInUpsert() {
+        stubUpsertConversion();
+        mockCoverage(List.of("A", "B"), 1);
+        when(screeningService.calculateAndSaveSnapshot(anyString()))
+                .thenReturn(List.of(new StockFactor()));
+        when(screeningService.buildBoard(eq("value"), any()))
+                .thenThrow(new RuntimeException("board boom"));
+        when(screeningService.buildBoard(eq("growth"), any())).thenReturn(List.of());
+        when(screeningService.buildBoard(eq("balanced"), any())).thenReturn(List.of());
+
+        Result<ScreeningResult> result = task.runScreening();
+        assertTrue(result.checkSuccess());
+
+        ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+        ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+        verify(mongoTemplate).upsert(queryCaptor.capture(), updateCaptor.capture(),
+                eq(ScreeningResult.class));
+
+        assertEquals(LocalDate.now().toString(),
+                queryCaptor.getValue().getQueryObject().getString("trade_date"));
+
+        Document set = (Document) updateCaptor.getValue().getUpdateObject().get("$set");
+        assertNotNull(set);
+        assertFalse(set.containsKey("_id"), "不应更新 _id，实际: " + set);
+        assertFalse(set.containsKey("value"), "失败的榜单不应以 null 覆盖旧值，实际: " + set);
+        assertTrue(set.containsKey("growth"), "成功榜单应写入，实际: " + set);
+        assertTrue(set.containsKey("balanced"), "成功榜单应写入，实际: " + set);
     }
 
     @Test
