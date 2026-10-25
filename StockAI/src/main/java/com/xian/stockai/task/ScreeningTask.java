@@ -1,5 +1,6 @@
 package com.xian.stockai.task;
 
+import com.xian.stockai.dao.IndexConstituentsRepository;
 import com.xian.stockai.dao.ScreeningResultRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.po.HotspotResult;
@@ -27,6 +28,7 @@ public class ScreeningTask {
     private final ScreeningReportService screeningReportService;
     private final ScreeningResultRepository screeningResultRepository;
     private final StockDailyKlineRepository stockDailyKlineRepository;
+    private final IndexConstituentsRepository indexConstituentsRepository;
 
     @Scheduled(cron = "${screening.cron:0 0 18 * * MON-FRI}")
     public void runDaily() {
@@ -41,7 +43,10 @@ public class ScreeningTask {
      */
     public Result<ScreeningResult> runScreening() {
         String tradeDate = LocalDate.now().toString();
-        if (!stockDailyKlineRepository.existsByTradeDate(tradeDate)) {
+        int poolSize = indexConstituentsRepository.findAll().size();
+        long coveredCount = stockDailyKlineRepository.countByTradeDate(tradeDate);
+        log.info("当日K线覆盖 {}/{}", coveredCount, poolSize);
+        if (coveredCount == 0) {
             log.warn("当日 {} 无K线数据，跳过选股任务", tradeDate);
             return Result.fail("当日K线数据未就绪");
         }

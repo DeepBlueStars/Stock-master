@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,18 +52,32 @@ class HotspotServiceTest {
                 stockDailyKlineRepository, screeningScoreRecordRepository, hotspotResultRepository);
     }
 
-    /** 6 条降序 K 线：最新 close=latest，其余 close=base，amount 恒定。 */
+    /** 6 条降序 K 线：最新 close=latest，其余 close=base，amount 恒定，最新一根为 2026-09-01。 */
     private List<StockDailyKline> flatKlines(String symbol, String base, String latest, String amount) {
+        return flatKlinesFrom(symbol, "2026-09-01", base, latest, amount);
+    }
+
+    /** 6 条降序 K 线，最新一根的 tradeDate 为 latestTradeDate。 */
+    private List<StockDailyKline> flatKlinesFrom(String symbol, String latestTradeDate,
+                                                 String base, String latest, String amount) {
+        LocalDate start = LocalDate.parse(latestTradeDate);
         List<StockDailyKline> list = new ArrayList<>();
         for (int i = 0; i < 6; i++) {
             StockDailyKline k = new StockDailyKline();
             k.setSymbol(symbol);
-            k.setTradeDate(LocalDate.of(2026, 9, 1).minusDays(i).toString());
+            k.setTradeDate(start.minusDays(i).toString());
             k.setClose(i == 0 ? new BigDecimal(latest) : new BigDecimal(base));
             k.setAmount(new BigDecimal(amount));
             list.add(k);
         }
         return list;
+    }
+
+    /** 以评分日 2026-09-01 为上界查询 K 线的 stub。 */
+    private void stubKlines(String symbol, List<StockDailyKline> klines) {
+        when(stockDailyKlineRepository
+                .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc(symbol, "2026-09-01"))
+                .thenReturn(klines);
     }
 
     private StockIndustryConcept industry(String symbol, String industry, List<String> concepts) {
@@ -103,22 +118,14 @@ class HotspotServiceTest {
         when(stockIndustryConceptRepository.findBySymbol("H"))
                 .thenReturn(industry("H", "医药", List.of()));
         // 成交额：A=100000 B=50000 C=30000 D=20000 E=10000 F=150000 G=60000 H=40000（全池 460000）
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("A"))
-                .thenReturn(flatKlines("A", "10", "11", "100000"));   // 涨停 0.1
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("B"))
-                .thenReturn(flatKlines("B", "10", "10.5", "50000"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("C"))
-                .thenReturn(flatKlines("C", "10", "10.2", "30000"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("D"))
-                .thenReturn(flatKlines("D", "10", "10.1", "20000"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("E"))
-                .thenReturn(flatKlines("E", "10", "9.9", "10000"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("F"))
-                .thenReturn(flatKlines("F", "10", "12", "150000"));   // 涨停 0.2
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("G"))
-                .thenReturn(flatKlines("G", "10", "10.5", "60000"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("H"))
-                .thenReturn(flatKlines("H", "10", "10.1", "40000"));
+        stubKlines("A", flatKlines("A", "10", "11", "100000"));   // 涨停 0.1
+        stubKlines("B", flatKlines("B", "10", "10.5", "50000"));
+        stubKlines("C", flatKlines("C", "10", "10.2", "30000"));
+        stubKlines("D", flatKlines("D", "10", "10.1", "20000"));
+        stubKlines("E", flatKlines("E", "10", "9.9", "10000"));
+        stubKlines("F", flatKlines("F", "10", "12", "150000"));   // 涨停 0.2
+        stubKlines("G", flatKlines("G", "10", "10.5", "60000"));
+        stubKlines("H", flatKlines("H", "10", "10.1", "40000"));
 
         ScreeningScoreRecord snapshot = new ScreeningScoreRecord();
         snapshot.setTradeDate("2026-09-01");
@@ -203,6 +210,35 @@ class HotspotServiceTest {
     void buildAndSaveReturnsNullWhenSnapshotMissing() {
         when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(null);
         assertNull(service.buildAndSave("2026-09-01"));
+    }
+
+    // ==== Task 6.2: 最新 K 线须为评分日，否则跳过 ====
+
+    @Test
+    void buildSkipsStocksWhoseLatestKlineIsOlderThanTradeDate() {
+        when(indexConstituentsRepository.findAll()).thenReturn(List.of(
+                constituent("A"), constituent("B"), constituent("C"), constituent("D")));
+        when(stockIndustryConceptRepository.findBySymbol(anyString()))
+                .thenReturn(industry(null, "白酒", List.of()));
+        stubKlines("A", flatKlines("A", "10", "11", "100000"));     // +0.1
+        stubKlines("B", flatKlines("B", "10", "10.5", "50000"));    // +0.05
+        stubKlines("C", flatKlines("C", "10", "10.2", "30000"));    // +0.02
+        // D 最新 K 线早于评分日，若未跳过会把 +0.2 当成当日涨幅
+        stubKlines("D", flatKlinesFrom("D", "2026-08-31", "10", "12", "20000"));
+        ScreeningScoreRecord snapshot = new ScreeningScoreRecord();
+        snapshot.setTradeDate("2026-09-01");
+        snapshot.setStocks(List.of(factor("A", 50), factor("B", 50),
+                factor("C", 50), factor("D", 50)));
+        when(screeningScoreRecordRepository.findByTradeDate("2026-09-01")).thenReturn(snapshot);
+
+        HotspotResult result = service.build("2026-09-01");
+
+        assertEquals(1, result.getIndustries().size());
+        HotspotDirection liquor = result.getIndustries().get(0);
+        assertEquals(3, liquor.getStockCount());
+        // 仅 A/B/C 参与：(0.1 + 0.05 + 0.02) / 3
+        assertEquals(0, new BigDecimal("0.056667").compareTo(liquor.getDailyAvgChange()));
+        assertTrue(liquor.getTopStocks().stream().noneMatch(s -> "D".equals(s.getSymbol())));
     }
 
     // ==== Task 6: 炒作风险标注 ====

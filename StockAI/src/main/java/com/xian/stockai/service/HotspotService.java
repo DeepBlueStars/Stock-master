@@ -133,10 +133,12 @@ public class HotspotService {
             if (symbol == null || statsBySymbol.containsKey(symbol)) {
                 continue;
             }
-            List<StockDailyKline> klines =
-                    stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc(symbol);
-            // 降序：get(0) 最新。5 日窗口需要 6 个收盘点
-            if (klines == null || klines.size() < FIVE_DAY_WINDOW + 1) {
+            // 以评分日为上界取窗口：降序 get(0) 最新，5 日窗口需要 6 个收盘点；
+            // 最新一根须为评分日，否则跳过（避免把陈旧涨跌当成当日涨跌）
+            List<StockDailyKline> klines = stockDailyKlineRepository
+                    .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc(symbol, tradeDate);
+            if (klines == null || klines.size() < FIVE_DAY_WINDOW + 1
+                    || !tradeDate.equals(klines.get(0).getTradeDate())) {
                 continue;
             }
             BigDecimal latest = klines.get(0).getClose();

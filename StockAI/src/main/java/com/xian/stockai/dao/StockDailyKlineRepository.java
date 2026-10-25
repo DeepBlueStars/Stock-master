@@ -8,5 +8,10 @@ import java.util.List;
 public interface StockDailyKlineRepository extends MongoRepository<StockDailyKline, String> {
     List<StockDailyKline> findTop21BySymbolOrderByTradeDateDesc(String symbol);
 
+    List<StockDailyKline> findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc(String symbol,
+                                                                                         String tradeDate);
+
     boolean existsByTradeDate(String tradeDate);
+
+    long countByTradeDate(String tradeDate);
 }

@@ -133,22 +133,30 @@ class ScreeningServiceTest {
                 .thenReturn(fundWith("2026-06-30", "12", "3", "15", "10", "20", "20"));
         when(stockFundamentalsRepository.findTopBySymbolOrderByReportDateDesc("S"))
                 .thenReturn(fundWith("2026-06-30", "15", "2", "10", "15", "10", "35"));
-        symbols.forEach(s -> when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc(s))
+        symbols.forEach(s -> when(stockDailyKlineRepository
+                        .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc(s, "2026-09-01"))
                 .thenReturn(descendingKlines(s, 21, "10", "12", "100000")));
     }
 
     /** 生成 count 条降序 K 线（index 0 = 最新 close=latestClose，index count-1 = 最旧 close=oldestClose，等差）。 */
     private List<StockDailyKline> descendingKlines(String symbol, int count,
                                                    String oldestClose, String latestClose, String amount) {
+        return descendingKlinesFrom(symbol, "2026-09-01", count, oldestClose, latestClose, amount);
+    }
+
+    /** 生成 count 条降序 K 线，最新一根的 tradeDate 为 latestTradeDate。 */
+    private List<StockDailyKline> descendingKlinesFrom(String symbol, String latestTradeDate, int count,
+                                                       String oldestClose, String latestClose, String amount) {
         BigDecimal oldest = new BigDecimal(oldestClose);
         BigDecimal latest = new BigDecimal(latestClose);
         BigDecimal step = latest.subtract(oldest)
                 .divide(BigDecimal.valueOf(count - 1), 6, RoundingMode.HALF_UP);
+        LocalDate start = LocalDate.parse(latestTradeDate);
         List<StockDailyKline> list = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             StockDailyKline k = new StockDailyKline();
             k.setSymbol(symbol);
-            k.setTradeDate(LocalDate.of(2026, 9, 1).minusDays(i).toString());
+            k.setTradeDate(start.minusDays(i).toString());
             k.setClose(latest.subtract(step.multiply(BigDecimal.valueOf(i))));
             k.setAmount(new BigDecimal(amount));
             list.add(k);
@@ -175,16 +183,21 @@ class ScreeningServiceTest {
         // E：财务超 1 年
         when(stockFundamentalsRepository.findTopBySymbolOrderByReportDateDesc("E"))
                 .thenReturn(fund("2024-01-01", "10", "2", "20", "20", "15", "40"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("A"))
+        when(stockDailyKlineRepository
+                .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc("A", "2026-09-01"))
                 .thenReturn(descendingKlines("A", 21, "10", "12", "100000"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("B"))
+        when(stockDailyKlineRepository
+                .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc("B", "2026-09-01"))
                 .thenReturn(descendingKlines("B", 21, "10", "10", "100000"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("C"))
+        when(stockDailyKlineRepository
+                .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc("C", "2026-09-01"))
                 .thenReturn(descendingKlines("C", 21, "10", "11", "100000"));
         // D：K 线不足 21 条
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("D"))
+        when(stockDailyKlineRepository
+                .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc("D", "2026-09-01"))
                 .thenReturn(descendingKlines("D", 10, "10", "11", "100000"));
-        when(stockDailyKlineRepository.findTop21BySymbolOrderByTradeDateDesc("E"))
+        when(stockDailyKlineRepository
+                .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc("E", "2026-09-01"))
                 .thenReturn(descendingKlines("E", 21, "10", "11", "100000"));
     }
 
@@ -234,6 +247,28 @@ class ScreeningServiceTest {
         assertEquals(0, new BigDecimal("0.2").compareTo(map.get("A").getMomentumReturn()));
         // 动量百分位：A=0.2 > C/E=0.1 > B=0 → A=100
         assertEquals(100, map.get("A").getMomentum());
+    }
+
+    @Test
+    void momentumIsNullWhenLatestKlineIsOlderThanTradeDate() {
+        when(indexConstituentsRepository.findAll()).thenReturn(List.of(constituent("A")));
+        when(stockBasicInfoRepository.findAll()).thenReturn(List.of(basic("A", "甲公司")));
+        when(stockFundamentalsRepository.findTopBySymbolOrderByReportDateDesc("A")).thenReturn(null);
+        // 窗口本身够 21 根，但最新一根早于评分日（停牌/未采集），不得用陈旧窗口
+        when(stockDailyKlineRepository
+                .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc("A", "2026-09-01"))
+                .thenReturn(descendingKlinesFrom("A", "2026-08-31", 21, "10", "12", "100000"));
+        StockFactor a = factorsBySymbol("2026-09-01").get("A");
+        assertNull(a.getMomentum());
+        assertNull(a.getMomentumReturn());
+    }
+
+    @Test
+    void momentumUsesBoundedQueryForTradeDate() {
+        mockStandardPool();
+        factorsBySymbol("2026-09-01");
+        verify(stockDailyKlineRepository)
+                .findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc("A", "2026-09-01");
     }
 
     @Test

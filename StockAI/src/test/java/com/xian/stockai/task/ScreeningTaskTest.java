@@ -1,7 +1,12 @@
 package com.xian.stockai.task;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.xian.stockai.dao.IndexConstituentsRepository;
 import com.xian.stockai.dao.ScreeningResultRepository;
 import com.xian.stockai.dao.StockDailyKlineRepository;
+import com.xian.stockai.po.IndexConstituents;
 import com.xian.stockai.po.ScreeningResult;
 import com.xian.stockai.po.StockFactor;
 import com.xian.stockai.service.HotspotService;
@@ -43,17 +48,31 @@ class ScreeningTaskTest {
     private ScreeningResultRepository screeningResultRepository;
     @Mock
     private StockDailyKlineRepository stockDailyKlineRepository;
+    @Mock
+    private IndexConstituentsRepository indexConstituentsRepository;
 
     private ScreeningTask task;
 
     @BeforeEach
     void setUp() {
         task = new ScreeningTask(screeningService, hotspotService, screeningReportService,
-                screeningResultRepository, stockDailyKlineRepository);
+                screeningResultRepository, stockDailyKlineRepository, indexConstituentsRepository);
+    }
+
+    private IndexConstituents constituent(String symbol) {
+        IndexConstituents c = new IndexConstituents();
+        c.setSymbol(symbol);
+        return c;
+    }
+
+    private void mockCoverage(List<String> poolSymbols, long coveredCount) {
+        when(indexConstituentsRepository.findAll()).thenReturn(
+                poolSymbols.stream().map(this::constituent).toList());
+        when(stockDailyKlineRepository.countByTradeDate(anyString())).thenReturn(coveredCount);
     }
 
     private void mockHappyPath() {
-        when(stockDailyKlineRepository.existsByTradeDate(anyString())).thenReturn(true);
+        mockCoverage(List.of("A", "B", "C", "D"), 3);
         List<StockFactor> factors = List.of(new StockFactor());
         when(screeningService.calculateAndSaveSnapshot(anyString())).thenReturn(factors);
         when(screeningService.buildBoard(eq("value"), any())).thenReturn(List.of());
@@ -71,13 +90,31 @@ class ScreeningTaskTest {
 
     @Test
     void runScreeningSkipsWhenNoKlineToday() {
-        when(stockDailyKlineRepository.existsByTradeDate(anyString())).thenReturn(false);
+        mockCoverage(List.of("A", "B"), 0);
         Result<ScreeningResult> result = task.runScreening();
         assertFalse(result.checkSuccess());
+        assertEquals("当日K线数据未就绪", result.getMessage());
         verifyNoInteractions(screeningService);
         verifyNoInteractions(hotspotService);
         verifyNoInteractions(screeningReportService);
         verify(screeningResultRepository, never()).save(any());
+    }
+
+    @Test
+    void runScreeningLogsKlineCoverage() {
+        mockHappyPath();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(ScreeningTask.class);
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            task.runScreening();
+        } finally {
+            logger.detachAppender(appender);
+        }
+        assertTrue(appender.list.stream()
+                        .anyMatch(e -> e.getFormattedMessage().contains("当日K线覆盖 3/4")),
+                "应记录当日 K 线覆盖率日志，实际: " + appender.list);
     }
 
     @Test
@@ -98,7 +135,7 @@ class ScreeningTaskTest {
 
     @Test
     void runScreeningFailsFastWhenSnapshotFails() {
-        when(stockDailyKlineRepository.existsByTradeDate(anyString())).thenReturn(true);
+        mockCoverage(List.of("A", "B"), 1);
         when(screeningService.calculateAndSaveSnapshot(anyString()))
                 .thenThrow(new RuntimeException("db down"));
         Result<ScreeningResult> result = task.runScreening();
@@ -109,7 +146,7 @@ class ScreeningTaskTest {
 
     @Test
     void runScreeningContinuesWhenBoardFails() {
-        when(stockDailyKlineRepository.existsByTradeDate(anyString())).thenReturn(true);
+        mockCoverage(List.of("A", "B"), 1);
         when(screeningService.calculateAndSaveSnapshot(anyString()))
                 .thenReturn(List.of(new StockFactor()));
         when(screeningService.buildBoard(eq("value"), any()))
@@ -137,7 +174,7 @@ class ScreeningTaskTest {
 
     @Test
     void runScreeningFailsFastWhenResultLoadFails() {
-        when(stockDailyKlineRepository.existsByTradeDate(anyString())).thenReturn(true);
+        mockCoverage(List.of("A", "B"), 1);
         when(screeningService.calculateAndSaveSnapshot(anyString()))
                 .thenReturn(List.of(new StockFactor()));
         when(screeningResultRepository.findByTradeDate(anyString()))
