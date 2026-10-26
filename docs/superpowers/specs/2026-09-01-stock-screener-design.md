@@ -2,6 +2,8 @@
 comet_change: stock-screener
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-10-26-stock-screener
+status: final
 ---
 
 # stock-screener 选股引擎技术设计

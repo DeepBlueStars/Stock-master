@@ -2,6 +2,7 @@
 change: stock-screener
 design-doc: docs/superpowers/specs/2026-09-01-stock-screener-design.md
 base-ref: 0b0e80302676ab7af625945bbe27012bf6c846e6
+archived-with: 2026-10-26-stock-screener
 ---
 
 # stock-screener 选股引擎实施计划
