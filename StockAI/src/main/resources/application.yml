@@ -11,7 +11,7 @@ spring:
      chat:
        options:
         #  model: deepseek-v4-pro
-         model: deepseek-v4-flash
+         model: deepseek-flash
       # api-key: sk-80afdd9c8d07429f98af10e778604da8
       # base-url: https://dashscope.aliyuncs.com/compatible-mode
       # chat:
