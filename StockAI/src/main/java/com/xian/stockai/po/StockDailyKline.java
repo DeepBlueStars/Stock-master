@@ -21,6 +21,15 @@ public class StockDailyKline {
     @Field(name = "trade_date")
     private String tradeDate;
 
+    @Field(name = "open")
+    private BigDecimal open;
+
+    @Field(name = "high")
+    private BigDecimal high;
+
+    @Field(name = "low")
+    private BigDecimal low;
+
     @Field(name = "close")
     private BigDecimal close;
 
@@ -33,6 +42,12 @@ public class StockDailyKline {
     public void setSymbol(String symbol) { this.symbol = symbol; }
     public String getTradeDate() { return tradeDate; }
     public void setTradeDate(String tradeDate) { this.tradeDate = tradeDate; }
+    public BigDecimal getOpen() { return open; }
+    public void setOpen(BigDecimal open) { this.open = open; }
+    public BigDecimal getHigh() { return high; }
+    public void setHigh(BigDecimal high) { this.high = high; }
+    public BigDecimal getLow() { return low; }
+    public void setLow(BigDecimal low) { this.low = low; }
     public BigDecimal getClose() { return close; }
     public void setClose(BigDecimal close) { this.close = close; }
     public BigDecimal getAmount() { return amount; }
