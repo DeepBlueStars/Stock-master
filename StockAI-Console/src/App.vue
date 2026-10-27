@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Menu as MenuIcon, Document, Setting, Bell, User, TrendCharts } from '@element-plus/icons-vue'
+import { Menu as MenuIcon, Document, Setting, Bell, User, TrendCharts, Notebook } from '@element-plus/icons-vue'
 import axios from 'axios'
 import config from './config/config'
 
@@ -138,6 +138,10 @@ onMounted(fetchNotifications)
           <el-menu-item index="/screener">
             <el-icon><TrendCharts /></el-icon>
             <span>选股</span>
+          </el-menu-item>
+          <el-menu-item index="/trade-plan">
+            <el-icon><Notebook /></el-icon>
+            <span>交易计划</span>
           </el-menu-item>
         </el-menu>
       </el-aside>

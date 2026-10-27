@@ -4,6 +4,7 @@ import Dashboard from '../components/Dashboard.vue'
 import Config from '../components/Config.vue'
 import MarketRegime from '../components/MarketRegime.vue'
 import StockScreener from '../components/StockScreener.vue'
+import TradePlan from '../components/TradePlan.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/screener',
       name: '选股',
       component: StockScreener
+    },
+    {
+      path: '/trade-plan',
+      name: '交易计划',
+      component: TradePlan
     }
   ]
 })
