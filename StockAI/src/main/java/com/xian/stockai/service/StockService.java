@@ -2,6 +2,7 @@ package com.xian.stockai.service;
 
 import com.xian.stockai.dao.*;
 import com.xian.stockai.po.*;
+import com.xian.stockai.service.tradeplan.TradePlanService;
 import com.xian.stockai.vo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,13 +30,15 @@ public class StockService {
     private final EtfDailyQuotesRepository etfDailyQuotesRepository;
     private final UserUseConfigDao userUseConfigDao;
     private final UserCategoryConfigRepository userCategoryConfigRepository;
+    private final TradePlanService tradePlanService;
 
     public StockService(StockTradeRepository stockTradeRepository, PositionRepository positionRepository,
                         MarketQuotesRepository marketQuotesRepository, StockBasicInfoRepository stockBasicInfoRepository,
                         EtfBasicInfoRepository etfBasicInfoRepository, TotalReturnRepository totalReturnRepository,
                         RealizedReturnRepository realizedReturnRepository, UsersRepository usersRepository,
                         AnalysisReportsRepository analysisReportsRepository, EtfDailyQuotesRepository etfDailyQuotesRepository,
-                        UserUseConfigDao userUseConfigDao, UserCategoryConfigRepository userCategoryConfigRepository) {
+                        UserUseConfigDao userUseConfigDao, UserCategoryConfigRepository userCategoryConfigRepository,
+                        TradePlanService tradePlanService) {
         this.stockTradeRepository = stockTradeRepository;
         this.positionRepository = positionRepository;
         this.marketQuotesRepository = marketQuotesRepository;
@@ -48,6 +51,7 @@ public class StockService {
         this.etfDailyQuotesRepository = etfDailyQuotesRepository;
         this.userUseConfigDao = userUseConfigDao;
         this.userCategoryConfigRepository = userCategoryConfigRepository;
+        this.tradePlanService = tradePlanService;
     }
 
     public Result<Void> buy(StockTrade stockTrade) {
@@ -114,6 +118,13 @@ public class StockService {
             }
         }
         
+        // 买入后生成/刷新交易计划，失败不影响交易结果
+        try {
+            tradePlanService.refreshPlan(stockTrade.getUserId(), stockTrade.getSymbol());
+        } catch (Exception e) {
+            log.error("生成交易计划失败: userId={}, symbol={}", stockTrade.getUserId(), stockTrade.getSymbol(), e);
+        }
+
         return result.setMessage("交易成功，佣金：" + commission + "，过户费：" + transferFee);
     }
 
