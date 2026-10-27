@@ -1,0 +1,14 @@
+{
+  "change": "trade-plan",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "0179b02e85d8859a112b68c81ad26229c748fd3cbf4349ecc17196693be25ea9",
+  "files": [
+    { "path": "docs/openspec/changes/trade-plan/proposal.md", "sha256": "03668be5deda5b1cc4ac6e3f15369ef00ca2d2831f3717243e7a198dfd1ad2c9" },
+    { "path": "docs/openspec/changes/trade-plan/design.md", "sha256": "f8e53f2bc6f8682933e9b9450deb3e52fb70ecda63349fc177dbcc780ba0284d" },
+    { "path": "docs/openspec/changes/trade-plan/tasks.md", "sha256": "64f1783d79cc3c9c1ffc333307d95a1675f95afc4d5e5b29557af013c8171a25" },
+    { "path": "docs/openspec/changes/trade-plan/specs/trade-plan/spec.md", "sha256": "5e980801b988976b970c1c1b70a1c9f78e3f7deb16ebadd505eb9270e1891595" }
+  ]
+}
