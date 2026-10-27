@@ -7,17 +7,20 @@ import com.xian.stockai.dao.StockIndustryConceptRepository;
 import com.xian.stockai.dao.TradePlanRepository;
 import com.xian.stockai.dao.UsersRepository;
 import com.xian.stockai.po.Position;
+import com.xian.stockai.po.PositionMonitor;
 import com.xian.stockai.po.StockDailyKline;
 import com.xian.stockai.po.StockIndustryConcept;
 import com.xian.stockai.po.TradePlan;
 import com.xian.stockai.po.Users;
 import com.xian.stockai.service.MonitorService;
+import com.xian.stockai.vo.MonitorLinkRes;
 import com.xian.stockai.vo.TradePlanRes;
 import com.xian.stockai.vo.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -118,6 +121,44 @@ public class TradePlanService {
             }
         }
         return Result.success(result);
+    }
+
+    /**
+     * 将计划中的止盈止损建议一键写入 PositionMonitor。
+     * 已存在规则时覆盖取值并保留启用状态；不存在时新建并启用。
+     */
+    public Result<MonitorLinkRes> linkMonitor(String userId, String symbol) {
+        if (userId == null || userId.isEmpty() || symbol == null || symbol.isEmpty()) {
+            return Result.fail("用户ID和股票代码不能为空");
+        }
+        TradePlan plan = tradePlanRepository.findByUserIdAndSymbol(userId, symbol).orElse(null);
+        if (plan == null) {
+            return Result.fail("交易计划不存在，请先刷新计划");
+        }
+        PositionMonitor monitor = positionMonitorRepository.findByUserIdAndSymbol(userId, symbol);
+        MonitorLinkRes.Before before = MonitorLinkRes.Before.from(monitor);
+        if (monitor == null) {
+            monitor = new PositionMonitor();
+            monitor.setUserId(userId);
+            monitor.setSymbol(symbol);
+            monitor.setStockName(plan.getStockName());
+            monitor.setType(null);
+            monitor.setEnabled(true);
+            monitor.setLastTriggerDirection(MonitorService.DIR_NONE);
+            monitor.setCreatedAt(LocalDateTime.now());
+        }
+        monitor.setTakeProfitType(MonitorService.TYPE_PRICE);
+        monitor.setTakeProfitValue(plan.getTakeProfitPrice());
+        monitor.setStopLossType(MonitorService.TYPE_PRICE);
+        monitor.setStopLossValue(plan.getStopLossPrice());
+        monitor.setUpdatedAt(LocalDateTime.now());
+        positionMonitorRepository.save(monitor);
+
+        plan.setMonitorLinked(true);
+        plan.setUpdatedAt(LocalDateTime.now());
+        tradePlanRepository.save(plan);
+        log.debug("交易计划已联动止盈止损提醒: userId={}, symbol={}", userId, symbol);
+        return Result.success(new MonitorLinkRes(before, MonitorLinkRes.After.from(monitor)));
     }
 
     private List<StockDailyKline> ascendingKlines(String symbol) {
