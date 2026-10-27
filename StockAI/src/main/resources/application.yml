@@ -67,3 +67,17 @@ screening:
       growth: 0.25
       quality: 0.30
       momentum: 0.20
+
+# 交易计划：ATR 参数、批次档位与周报配置
+trade-plan:
+  atr-period: 14
+  stop-atr-multiplier: 2.0
+  risk-reward: 2.0
+  support-resistance-window: 20
+  high-volatility-threshold: 0.03
+  mid-volatility-threshold: 0.02
+  min-kline-count: 15
+  degraded-stop-loss-rate: 0.05
+  degraded-take-profit-rate: 0.10
+  summary-retention-weeks: 12
+  summary-cron: "0 0 8 ? * SAT"
