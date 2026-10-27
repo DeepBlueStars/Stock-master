@@ -1,4 +1,4 @@
----
+﻿---
 change: trade-plan
 design-doc: docs/superpowers/specs/2026-10-26-trade-plan-design.md
 base-ref: df0af979f32006c05e555d0604be00c5133d1709
@@ -6,7 +6,7 @@ base-ref: df0af979f32006c05e555d0604be00c5133d1709
 
 # 交易计划（trade-plan）实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
 **Goal:** 买入后自动生成可解释的交易计划（止盈止损/批次/补仓/卖出），一键联动止盈止损提醒，并在每周六生成交易计划周报与前端展示。
 
@@ -67,7 +67,7 @@ base-ref: df0af979f32006c05e555d0604be00c5133d1709
 **Interfaces:**
 - Produces: `IndicatorCalculator#atr(List<StockDailyKline> ascKlines, int period) -> BigDecimal|null`、`support(...)->BigDecimal|null`、`resistance(...)->BigDecimal|null`；`TradePlanProperties` 全部 getter。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```java
 package com.xian.stockai.service.tradeplan;
@@ -131,12 +131,12 @@ class IndicatorCalculatorTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd StockAI; ./mvnw test -Dtest=IndicatorCalculatorTest`
 Expected: 编译失败（`IndicatorCalculator` / `StockDailyKline#getHigh` 不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `TradePlanProperties`（仿 `ScreeningProperties`，`@Component` + `@ConfigurationProperties(prefix = "trade-plan")`）：
 
@@ -222,12 +222,12 @@ private BigDecimal extreme(List<StockDailyKline> ascKlines, int window,
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `cd StockAI; ./mvnw test -Dtest=IndicatorCalculatorTest`
 Expected: PASS（3 个测试）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/config/TradePlanProperties.java StockAI/src/main/java/com/xian/stockai/po/StockDailyKline.java StockAI/src/main/java/com/xian/stockai/service/tradeplan/IndicatorCalculator.java StockAI/src/test/java/com/xian/stockai/service/tradeplan/IndicatorCalculatorTest.java
@@ -247,7 +247,7 @@ git commit -m "feat(trade-plan): 新增 ATR 与支撑阻力计算及参数配置
 **Interfaces:**
 - Produces: `TradePlan`（字段见设计文档 4.1）、`TradePlanRepository#findByUserIdAndSymbol(String,String)->Optional<TradePlan>`、`#findByUserId(String)->List<TradePlan>`；`TradePlanRes` 为返回 VO（`from(TradePlan)` 静态方法）。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```java
 package com.xian.stockai.po;
@@ -275,12 +275,12 @@ class TradePlanPoTest {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanPoTest`
 Expected: 编译失败（类不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `TradePlan` 使用 `@Document(collection = "trade_plans")` + `@CompoundIndex(name = "uk_user_symbol", def = "{'user_id': 1, 'symbol': 1}", unique = true)`，字段与 `@Field` 命名严格按设计文档 4.1；`buy_batches` 为 `List<TradePlanBatch>`（内部静态类：`ratio`、`price`、`amount`）；`add_position_rule` 为内部静态类 `AddPositionRule`（`trigger_price`、`ratio`、`condition_text`）；`sell_strategy` 为内部静态类 `SellStrategy`（`take_profit_action`、`stop_loss_action`、`resistance_note`）。
 
@@ -298,12 +298,12 @@ public interface TradePlanRepository extends MongoRepository<TradePlan, String> 
 
 `TradePlanRes`：直接镜像 `TradePlan` 的展示字段（`symbol`、`stockName`、`quantity`、`avgCost`、`lastClose`、`floatPnl`、`floatPnlRate`、`industry`、`atr14`、`atrRatio`、`support20d`、`resistance20d`、`stopLossPrice`、`takeProfitPrice`、`stopBasis`、`targetBasis`、`buyMode`、`buyBatches`、`buyBasis`、`addPositionRule`、`sellStrategy`、`degraded`、`degradedReason`、`monitorLinked`、`generatedAt`），提供 `public static TradePlanRes from(TradePlan plan)`。
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanPoTest`
 Expected: PASS（2 个测试）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/po/TradePlan.java StockAI/src/main/java/com/xian/stockai/po/TradePlanSummary.java StockAI/src/main/java/com/xian/stockai/dao/TradePlanRepository.java StockAI/src/main/java/com/xian/stockai/dao/TradePlanSummaryRepository.java StockAI/src/main/java/com/xian/stockai/vo/TradePlanRes.java StockAI/src/test/java/com/xian/stockai/po/TradePlanPoTest.java
@@ -324,7 +324,7 @@ git commit -m "feat(trade-plan): 新增交易计划与周报文档及仓储"
 - Consumes: `IndicatorCalculator#atr/support/resistance`、`TradePlanProperties`
 - Produces: `TradePlanCalculator#calculate(CashContext cash, Position position, String industry, List<StockDailyKline> ascKlines, BigDecimal lastClose) -> TradePlan`；内部静态类 `CashContext(BigDecimal availableCash, String cashBasis)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```java
 class TradePlanCalculatorTest {
@@ -392,12 +392,12 @@ class TradePlanCalculatorTest {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanCalculatorTest`
 Expected: 编译失败（`TradePlanCalculator` 不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 核心逻辑（按设计 3.3~3.6）：
 
@@ -452,12 +452,12 @@ public TradePlan calculate(CashContext cash, Position position, String industry,
 
 `applyDegraded`：`stopLossPrice = avgCost×(1-degradedStopLossRate)`、`takeProfitPrice = avgCost×(1+degradedTakeProfitRate)`（2 位小数）、`degraded=true`、`degradedReason=reason`、`buyMode=LUMP_SUM`、`buyBatches=空列表`。
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanCalculatorTest`
 Expected: PASS（3 个测试）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/service/tradeplan/TradePlanCalculator.java StockAI/src/test/java/com/xian/stockai/service/tradeplan/TradePlanCalculatorTest.java
@@ -478,7 +478,7 @@ git commit -m "feat(trade-plan): 实现止盈止损、批次、补仓与卖出�
 - Consumes: `TradePlanCalculator`、`TradePlanRepository`、`PositionRepository`、`StockDailyKlineRepository`、`MarketQuotesRepository`、`EtfDailyQuotesRepository`、`StockIndustryConceptRepository`、`UsersRepository`
 - Produces: `TradePlanService#refreshPlan(String userId, String symbol)`、`#list(String userId) -> Result<List<TradePlanRes>>`
 
-- [ ] **Step 1: 写失败测试**（Mockito）
+- [x] **Step 1: 写失败测试**（Mockito）
 
 ```java
 @ExtendWith(MockitoExtension.class)
@@ -531,12 +531,12 @@ class TradePlanServiceTest {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanServiceTest`
 Expected: 编译失败（`TradePlanService` 不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `refreshPlan`：查持仓（无则日志返回）→ 取升序K线（`findTop21BySymbolOrderByTradeDateDesc` 后反转，取最近 21 根保证 20 根窗口 + 1 根用于 TR）→ 现价（ETF 走 `etfDailyQuotesRepository`，个股走 `marketQuotesRepository`，无则降级）→ 行业（`industryConceptRepository.findBySymbol`）→ 现金（`usersRepository.findById` 的 cash，`buyMethod` 无法回溯时以 `REMAINING_CASH` 表示有 cash、null 表示 UNKNOWN）→ `calculator.calculate(...)` → 若已存在计划沿用 `monitorLinked` → `save`。
 
@@ -554,12 +554,12 @@ try {
 
 构造器追加 `TradePlanService tradePlanService` 参数并赋值。
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanServiceTest,StockServiceTest`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/service/tradeplan/TradePlanService.java StockAI/src/main/java/com/xian/stockai/service/StockService.java StockAI/src/test/java/com/xian/stockai/service/tradeplan/TradePlanServiceTest.java
@@ -581,7 +581,7 @@ git commit -m "feat(trade-plan): 买入后自动生成交易计划并支持按�
 **Interfaces:**
 - Produces: `TradePlanService#linkMonitor(String userId, String symbol) -> Result<MonitorLinkRes>`；`TradePlanController` 暴露 `POST /trade-plan/list`、`/trade-plan/link-monitor`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```java
 @ExtendWith(MockitoExtension.class)
@@ -605,12 +605,12 @@ class TradePlanLinkMonitorTest {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanLinkMonitorTest`
 Expected: 编译失败
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```java
 public Result<MonitorLinkRes> linkMonitor(String userId, String symbol) {
@@ -644,12 +644,12 @@ public Result<MonitorLinkRes> linkMonitor(String userId, String symbol) {
 
 `TradePlanController`（`@RequiredArgsConstructor` + `@RestController` + `@RequestMapping("/trade-plan")`）：`/list` 接 `UserRequest`；`/link-monitor` 接 `TradePlanSymbolReq`；其余 4 个周报接口在 Task 7 补齐。
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanLinkMonitorTest,TradePlanControllerTest`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/vo/MonitorLinkRes.java StockAI/src/main/java/com/xian/stockai/vo/TradePlanSymbolReq.java StockAI/src/main/java/com/xian/stockai/controller/TradePlanController.java StockAI/src/main/java/com/xian/stockai/service/tradeplan/TradePlanService.java StockAI/src/test/java/com/xian/stockai/service/tradeplan/TradePlanLinkMonitorTest.java StockAI/src/test/java/com/xian/stockai/controller/TradePlanControllerTest.java
@@ -670,7 +670,7 @@ git commit -m "feat(trade-plan): 支持一键写入止盈止损提醒并返回�
 - Consumes: `TradePlanRepository`、`PositionRepository`、`StockTradeRepository`、`StockIndustryConceptRepository`、`HotspotResultRepository`、`ScreeningResultRepository`、`UsersRepository`
 - Produces: `TradePlanSummaryDataAssembler#assemble(String userId, LocalDate weekStart, LocalDate weekEnd) -> Map<String, Object>`（键与模板第 1 节字段一致）
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```java
 @Test
@@ -692,12 +692,12 @@ void industryDistributionSortsByCostRatioAndCountsUnclassified() {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanSummaryDataAssemblerTest`
 Expected: 编译失败
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 回放算法（`replayCleared`）：
 
@@ -722,12 +722,12 @@ for (StockTrade t : tradesSortedByCreatedAt) {
 
 prompt 资源：`trade-plan-weekly-report.md` 内容取自 `docs/openspec/changes/trade-plan/.comet/handoff/ai-summary-prompt.md` 的「角色 / 输入 / 输出模板 / 硬性约束 / 降级与校验」；`trade-plan-weekly-template.md` 取自 `ai-summary-template.md` 第 2 节模板（去掉审核说明）。两份文件头部不得含 YAML frontmatter。
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanSummaryDataAssemblerTest`
 Expected: PASS（3 个测试）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/service/tradeplan/TradePlanSummaryDataAssembler.java StockAI/src/main/resources/prompts/trade-plan-weekly-report.md StockAI/src/main/resources/prompts/trade-plan-weekly-template.md StockAI/src/test/java/com/xian/stockai/service/tradeplan/TradePlanSummaryDataAssemblerTest.java
@@ -749,7 +749,7 @@ git commit -m "feat(trade-plan): 组装周报数据并新增周报 prompt 与模
 **Interfaces:**
 - Produces: `TradePlanSummaryService#generateWeekly(String userId) -> TradePlanSummary`、`#latest(String userId)->Result<TradePlanSummaryRes>`、`#history(String userId)->Result<List<TradePlanSummaryBriefRes>>`、`#detail(String userId, String weekStart)->Result<TradePlanSummaryRes>`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```java
 @Test
@@ -777,12 +777,12 @@ void taskContinuesWhenSingleUserFails() {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanSummaryServiceTest,TradePlanSummaryTaskTest`
 Expected: 编译失败
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```java
 @Service
@@ -871,12 +871,12 @@ trade-plan:
   summary-cron: "0 0 8 ? * SAT"
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `cd StockAI; ./mvnw test -Dtest=TradePlanSummaryServiceTest,TradePlanSummaryTaskTest`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add StockAI/src/main/java/com/xian/stockai/service/tradeplan/TradePlanSummaryService.java StockAI/src/main/java/com/xian/stockai/task/TradePlanSummaryTask.java StockAI/src/main/java/com/xian/stockai/vo/TradePlanSummaryRes.java StockAI/src/main/java/com/xian/stockai/vo/TradePlanSummaryBriefRes.java StockAI/src/main/java/com/xian/stockai/vo/TradePlanSummaryDetailReq.java StockAI/src/main/java/com/xian/stockai/controller/TradePlanController.java StockAI/src/main/resources/application.yml StockAI/src/test/java/com/xian/stockai/service/tradeplan/TradePlanSummaryServiceTest.java StockAI/src/test/java/com/xian/stockai/task/TradePlanSummaryTaskTest.java
@@ -899,7 +899,7 @@ git commit -m "feat(trade-plan): 每周六生成交易计划周报并支持历�
 - Consumes: `POST /trade-plan/list`、`/trade-plan/link-monitor`、`/trade-plan/summary/latest`、`/summary/list`、`/summary/detail`、`/summary/generate`
 - Produces: 两个子组件 props/emits：`WeeklySummaryBlock`（内部自取数据）、`TradePlanCard`（`props: plan`，`emit('linked')`）
 
-- [ ] **Step 1: 组件骨架与路由**
+- [x] **Step 1: 组件骨架与路由**
 
 `TradePlan.vue`：`<script setup>` 内 `userId` 取自 localStorage（与 `Dashboard.vue` 现有取值方式一致）；`onMounted` 调 `/trade-plan/list`；布局 = `<WeeklySummaryBlock />` + `<el-row :gutter="16">` 卡片栅格。
 
@@ -924,7 +924,7 @@ function renderMarkdown(md) {
 
 模板：标题行 `本周周报` + `生成时间：{{ generatedAt }}` + 按钮「展开/收起」「历史」；折叠时容器 `max-height: 240px; overflow: hidden`；展开时 `max-height: none`，下方内容自然下移；历史 `el-dialog width="900px"`，左栏 `el-menu` 列表（`v-for` 最近 12 期），右栏 `v-html="renderMarkdown(selected.content)"`。
 
-- [ ] **Step 2: 卡片与联动按钮**
+- [x] **Step 2: 卡片与联动按钮**
 
 `TradePlanCard.vue`：`el-card` 内分段展示 `plan` 字段；`degraded` 时头部 `el-tag type="warning">计划降级</el-tag>` 并展示 `degradedReason`；按钮：
 
@@ -939,7 +939,7 @@ async function linkMonitor() {
 }
 ```
 
-- [ ] **Step 3: 路由与菜单**
+- [x] **Step 3: 路由与菜单**
 
 `router/index.js`：
 
@@ -958,7 +958,7 @@ import TradePlan from '../components/TradePlan.vue'
 </el-menu-item>
 ```
 
-- [ ] **Step 4: 构建与人工验证**
+- [x] **Step 4: 构建与人工验证**
 
 Run: `cd StockAI-Console; npm run build`
 Expected: 构建成功，无 ESLint/编译错误
@@ -971,7 +971,7 @@ Expected: 构建成功，无 ESLint/编译错误
 5. 降级标的显示「计划降级」标签与原因
 6. 无持仓/无周报时显示空态
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add StockAI-Console/src/components/TradePlan.vue StockAI-Console/src/components/TradePlan/WeeklySummaryBlock.vue StockAI-Console/src/components/TradePlan/TradePlanCard.vue StockAI-Console/src/router/index.js StockAI-Console/src/App.vue
@@ -982,9 +982,10 @@ git commit -m "feat(trade-plan): 新增交易计划页与周报折叠展示"
 
 ## 验证与收尾
 
-- [ ] 后端全量测试：`cd StockAI; ./mvnw test`
-- [ ] 后端构建：`cd StockAI; ./mvnw clean package -DskipTests`
-- [ ] 前端构建：`cd StockAI-Console; npm run build`
-- [ ] 勾选 `docs/openspec/changes/trade-plan/tasks.md` 全部任务
-- [ ] 代码审查（按 `review_mode` 执行）
-- [ ] `comet guard trade-plan build --apply`
+- [x] 后端全量测试：`cd StockAI; ./mvnw test`
+- [x] 后端构建：`cd StockAI; ./mvnw clean package -DskipTests`
+- [x] 前端构建：`cd StockAI-Console; npm run build`
+- [x] 勾选 `docs/openspec/changes/trade-plan/tasks.md` 全部任务
+- [x] 代码审查（按 `review_mode` 执行）
+- [x] `comet guard trade-plan build --apply`
+
