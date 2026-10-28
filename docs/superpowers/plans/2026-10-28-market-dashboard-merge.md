@@ -2,6 +2,7 @@
 change: market-dashboard-merge
 design-doc: docs/superpowers/specs/2026-10-28-market-dashboard-merge-design.md
 base-ref: 15c15905b26f9d915f54c15e99a8694dfc4580dd
+archived-with: 2026-10-28-market-dashboard-merge
 ---
 
 # 市场页面合并实施计划

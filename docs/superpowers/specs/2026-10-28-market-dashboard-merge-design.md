@@ -2,6 +2,8 @@
 comet_change: market-dashboard-merge
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-10-28-market-dashboard-merge
+status: final
 ---
 
 # 市场页面合并技术设计（market-dashboard-merge）
