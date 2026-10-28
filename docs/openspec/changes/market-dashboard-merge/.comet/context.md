@@ -3,7 +3,7 @@
 - Change: market-dashboard-merge
 - Phase: design
 - Mode: compact
-- Context hash: ccec5d917aff5146724efdc05b34b4ab9a0366f62340ce96a2c86d7e2d243e45
+- Context hash: 9689c03acb9d494bcba495effedc06c931b269ce36e4a65d91c2131422e57d37
 
 Generated-by: comet-handoff.sh
 
@@ -52,8 +52,8 @@ StockAI-Console 的「温度计」与「选股」两个页面各自只承载少�
 ## docs/openspec/changes/market-dashboard-merge/design.md
 
 - Source: docs/openspec/changes/market-dashboard-merge/design.md
-- Lines: 1-101
-- SHA256: 3b9eb2ebca3e566e61318c98a8ab83e140e907b3da2348d908d021f0534b8516
+- Lines: 1-102
+- SHA256: 6ae09a8f9d515a67e414a088345e129131d8885e890197ca2c5453c066073c31
 
 [TRUNCATED]
 
@@ -113,6 +113,7 @@ StockAI-Console 的「温度计」与「选股」两个页面各自只承载少�
 ```
 
 - 使用 `el-row :gutter="16"` + `el-col :xs="24" :lg="8"` / `:lg="16"` 实现响应式：`lg`（≥1200px）双栏，`md` 及以下自动堆叠。
+- 热点方向在常规宽屏（1200–1919px）使用全宽上下排列，仅在超宽屏（≥1920px）切换为左右双栏，避免半宽表格挤压炒作风险与代表股列。
 - 页面容器不再设置 `max-width`，改为 `width: 100%`；通过 `App.vue` 的 `padding` 控制边距。
 - 摘要条使用紧凑指标卡（label + value），在无数据时显示 `-`，避免出现空白条。
 - 历史记录用 `el-collapse` 收纳，默认展开，桌面端不额外占用首屏过多高度，窄屏可折叠。
@@ -138,7 +139,6 @@ StockAI-Console 的「温度计」与「选股」两个页面各自只承载少�
 
 ### 5. 视觉与深色模式
 
-
 ```
 
 Full source: docs/openspec/changes/market-dashboard-merge/design.md
@@ -147,43 +147,43 @@ Full source: docs/openspec/changes/market-dashboard-merge/design.md
 
 - Source: docs/openspec/changes/market-dashboard-merge/tasks.md
 - Lines: 1-26
-- SHA256: 890d7f412c7801452120af6e61303d0063ecc089a38843e3f19f0253d02f3819
+- SHA256: f7552040853665997b7144532bad463f1061684ed46823c555ae3c368a2e9367
 
 ```md
 ## 1. 统一页面骨架与数据层
 
-- [ ] 1.1 新建 `StockAI-Console/src/components/MarketOverview.vue`，搭建「标题/交易日/刷新」头部、顶部摘要条、市场温度与选股双栏、热点方向双栏、历史记录折叠区的骨架；完成后文件存在且 `npm run build` 不因模板语法报错
-- [ ] 1.2 在 `MarketOverview.vue` 中实现 `/market-regime/latest`、`/market-regime/history?limit=30`、`/screening/latest`、`/hotspot/latest` 的并行请求（`Promise.allSettled`），为四个区块分别维护 loading、error 与数据状态；完成后代码检查确认没有串行 await 且单接口失败只影响自身区块
-- [ ] 1.3 实现市场温度区块：状态徽标与颜色语义、仓位建议、交易日、MA20/MA60/MA250、量比、波动率、PE/PB 分位、AI 报告；完成后对照规格「保留原有信息完整性」逐项核对字段均已渲染
-- [ ] 1.4 实现选股区块：AI 综合报告与降级标记、均衡/价值/成长三个 Tab、Top 20 表格（综合分、四因子、长期价值评级、入选理由）；完成后确认三个 Tab 可切换且表格字段齐全
-- [ ] 1.5 实现热点方向区块：行业 Top 10 与概念 Top 10 双栏表格，包含热度、股票数、涨停数、单日/5 日均涨幅、炒作风险标签与代表股；完成后确认两类榜单字段齐全
-- [ ] 1.6 实现历史记录区块：最近 30 条市场状态的历史表格，包含日期、状态、仓位建议、报告摘要，并放入默认展开的折叠面板；完成后确认表格按时间倒序展示
+- [x] 1.1 新建 `StockAI-Console/src/components/MarketOverview.vue`，搭建「标题/交易日/刷新」头部、顶部摘要条、市场温度与选股双栏、热点方向双栏、历史记录折叠区的骨架；完成后文件存在且 `npm run build` 不因模板语法报错
+- [x] 1.2 在 `MarketOverview.vue` 中实现 `/market-regime/latest`、`/market-regime/history?limit=30`、`/screening/latest`、`/hotspot/latest` 的并行请求（`Promise.allSettled`），为四个区块分别维护 loading、error 与数据状态；完成后代码检查确认没有串行 await 且单接口失败只影响自身区块
+- [x] 1.3 实现市场温度区块：状态徽标与颜色语义、仓位建议、交易日、MA20/MA60/MA250、量比、波动率、PE/PB 分位、AI 报告；完成后对照规格「保留原有信息完整性」逐项核对字段均已渲染
+- [x] 1.4 实现选股区块：AI 综合报告与降级标记、均衡/价值/成长三个 Tab、Top 20 表格（综合分、四因子、长期价值评级、入选理由）；完成后确认三个 Tab 可切换且表格字段齐全
+- [x] 1.5 实现热点方向区块：行业 Top 10 与概念 Top 10 双栏表格，包含热度、股票数、涨停数、单日/5 日均涨幅、炒作风险标签与代表股；完成后确认两类榜单字段齐全
+- [x] 1.6 实现历史记录区块：最近 30 条市场状态的历史表格，包含日期、状态、仓位建议、报告摘要，并放入默认展开的折叠面板；完成后确认表格按时间倒序展示
 
 ## 2. 路由、导航与旧页面清理
 
-- [ ] 2.1 在 `StockAI-Console/src/router/index.js` 中新增 `/market` 路由指向 `MarketOverview.vue`，并将 `/regime`、`/screener` 改为 `redirect: '/market'`；完成后运行构建并检查路由配置含三条记录且重定向目标正确
-- [ ] 2.2 修改 `StockAI-Console/src/App.vue` 侧边导航，删除「温度计」「选股」两个菜单项，新增单个「市场」入口（`index="/market"`）；完成后确认导航项数量减少且默认选中逻辑使用 `route.path`
-- [ ] 2.3 删除 `StockAI-Console/src/components/MarketRegime.vue` 与 `StockAI-Console/src/components/StockScreener.vue`，并全局搜索确认无组件引用残留；完成后搜索 `MarketRegime`、`StockScreener` 仅在变更文档或历史记录中出现
+- [x] 2.1 在 `StockAI-Console/src/router/index.js` 中新增 `/market` 路由指向 `MarketOverview.vue`，并将 `/regime`、`/screener` 改为 `redirect: '/market'`；完成后运行构建并检查路由配置含三条记录且重定向目标正确
+- [x] 2.2 修改 `StockAI-Console/src/App.vue` 侧边导航，删除「温度计」「选股」两个菜单项，新增单个「市场」入口（`index="/market"`）；完成后确认导航项数量减少且默认选中逻辑使用 `route.path`
+- [x] 2.3 删除 `StockAI-Console/src/components/MarketRegime.vue` 与 `StockAI-Console/src/components/StockScreener.vue`，并全局搜索确认无组件引用残留；完成后搜索 `MarketRegime`、`StockScreener` 仅在变更文档或历史记录中出现
 
 ## 3. 响应式排版与视觉一致性
 
-- [ ] 3.1 页面容器改为 `width: 100%` 且不设窄 `max-width`，使用 `el-row/el-col` 的 `:xs="24" :lg="8"/"16"` 与热点 `:lg="12"` 实现宽屏双栏、窄屏堆叠；完成后通过浏览器宽度断点（1440/1024/768）检查无横向滚动
-- [ ] 3.2 统一卡片、表格与标签样式：表格使用 `size="small"`、设置最大高度与溢出提示，状态/风险颜色沿用既有语义，并补充深色模式下的局部样式；完成后在深色模式开关下检查文本与背景对比度
-- [ ] 3.3 为每个区块补充加载态、空态与错误态文案，摘要条在无数据时显示 `-`；完成后模拟接口失败或空数据，确认其他区块不受影响
+- [x] 3.1 页面容器改为 `width: 100%` 且不设窄 `max-width`，使用 `el-row/el-col` 的 `:xs="24" :lg="8"/"16"` 实现主区宽屏双栏，热点方向 `:lg="24" :xl="12"`（常规宽屏上下排列、超宽屏双栏）；完成后通过浏览器宽度断点（1920/1440/1024/768）检查无横向滚动
+- [x] 3.2 统一卡片、表格与标签样式：表格使用 `size="small"`、设置最大高度与溢出提示，状态/风险颜色沿用既有语义，并补充深色模式下的局部样式；完成后在深色模式开关下检查文本与背景对比度
+- [x] 3.3 为每个区块补充加载态、空态与错误态文案，摘要条在无数据时显示 `-`；完成后模拟接口失败或空数据，确认其他区块不受影响
 
 ## 4. 集成验证
 
-- [ ] 4.1 在 `StockAI-Console` 目录执行 `npm run build`，确认构建成功且无新增警告（如有警告需记录原因）
-- [ ] 4.2 启动开发服务器，人工访问 `/market`、`/regime`、`/screener`，确认统一页面展示、旧路径均跳转到 `/market`、导航只有一个「市场」入口
-- [ ] 4.3 对照 `specs/market-dashboard/spec.md` 的全部 Scenario 做逐条核对，确认宽屏/窄屏排版、深色模式、空态与数据完整性均符合
+- [x] 4.1 在 `StockAI-Console` 目录执行 `npm run build`，确认构建成功且无新增警告（如有警告需记录原因）
+- [x] 4.2 启动开发服务器，人工访问 `/market`、`/regime`、`/screener`，确认统一页面展示、旧路径均跳转到 `/market`、导航只有一个「市场」入口
+- [x] 4.3 对照 `specs/market-dashboard/spec.md` 的全部 Scenario 做逐条核对，确认宽屏/窄屏排版、深色模式、空态与数据完整性均符合
 
 ```
 
 ## docs/openspec/changes/market-dashboard-merge/specs/market-dashboard/spec.md
 
 - Source: docs/openspec/changes/market-dashboard-merge/specs/market-dashboard/spec.md
-- Lines: 1-109
-- SHA256: 75536a2d82c620f627fce186654ddbe6d335eb59ead2fc674a75ac38d1b536e8
+- Lines: 1-119
+- SHA256: a771da4eab7eded99f441ed79a7dafe6298ba602754fc85d251ae4052545ba61
 
 [TRUNCATED]
 
@@ -212,14 +212,24 @@ Full source: docs/openspec/changes/market-dashboard-merge/design.md
 
 市场页面 SHALL 在宽屏下使用横向分区提高信息密度，MUST NOT 以固定的窄内容宽度在页面两侧留下大面积空白；在窄屏下各分区 MUST 自动堆叠且不出现横向滚动。
 
-#### Scenario: 宽屏充分利用横向空间
+#### Scenario: 宽屏主双栏
 
 - **WHEN** 浏览器可视宽度不小于 1200px
-- **THEN** 页面内容宽度随主内容区自适应铺满，市场温度与选股榜单以左右双栏展示，热点方向以左右双栏展示
+- **THEN** 页面内容宽度随主内容区自适应铺满，市场温度与选股榜单以左右双栏展示
+
+#### Scenario: 超宽屏热点双栏
+
+- **WHEN** 浏览器可视宽度不小于 1920px
+- **THEN** 行业与概念热点榜单以左右双栏展示
+
+#### Scenario: 常规宽屏热点全宽
+
+- **WHEN** 浏览器可视宽度介于 1200px 与 1919px 之间
+- **THEN** 行业与概念热点榜单以全宽上下排列，保证热度、涨停数、涨幅、炒作风险与代表股完整可读
 
 #### Scenario: 窄屏自动堆叠
 
-- **WHEN** 浏览器可视宽度小于 992px
+- **WHEN** 浏览器可视宽度小于 1200px
 - **THEN** 市场温度、选股榜单、热点方向和历史记录按纵向顺序堆叠，表格可横向滚动且页面本身不产生横向滚动
 
 #### Scenario: 顶部摘要信息
@@ -258,16 +268,6 @@ Full source: docs/openspec/changes/market-dashboard-merge/design.md
 #### Scenario: 手动刷新
 
 - **WHEN** 用户点击页面刷新操作
-- **THEN** 系统重新请求全部市场数据区块，并在请求期间显示加载状态
-
-### Requirement: 保留原有信息完整性
-
-统一页面 MUST 完整保留原两个页面的信息：市场状态（含状态、仓位建议、三项均线、量比、波动率、PE/PB 分位、AI 报告与日期）、选股（含 AI 综合报告、均衡/价值/成长三类榜单、综合分与四因子分、长期价值评级、入选理由）、热点方向（行业与概念 Top 10、热度、涨停数、涨幅、炒作风险与代表股）以及最近 30 条市场状态历史。
-
-#### Scenario: 市场状态信息完整
-
-- **WHEN** 市场状态记录存在
-- **THEN** 页面展示状态徽标、仓位建议、交易日、AI 报告以及全部量化指标
 
 ```
 

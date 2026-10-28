@@ -24,7 +24,7 @@ archived: false
 bound_branch: comet/market-dashboard-merge
 direct_override: null
 handoff_context: docs/openspec/changes/market-dashboard-merge/.comet/handoff/design-context.json
-handoff_hash: ccec5d917aff5146724efdc05b34b4ab9a0366f62340ce96a2c86d7e2d243e45
+handoff_hash: 9689c03acb9d494bcba495effedc06c931b269ce36e4a65d91c2131422e57d37
 classic_profile: full
 classic_migration: 1
 run_id: 6a487e40-e586-4dab-8fb3-2e069eedae4a

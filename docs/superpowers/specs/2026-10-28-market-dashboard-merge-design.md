@@ -54,7 +54,7 @@ StockAI-Console/src/
 | 摘要条 | 市场状态、仓位建议、最高综合分、候选股数、热点/涨停 | CSS Grid，5 列 |
 | 市场温度 | 徽标、建议、日期、指标网格、AI 报告 | `el-card` + CSS Grid 指标 |
 | 选股榜单 | AI 报告、三风格 Tabs、Top20 表格 | `el-tabs` + `el-table` |
-| 热点方向 | 行业 Top10、概念 Top10 | `el-row` 两个 `el-col :lg="12"` |
+| 热点方向 | 行业 Top10、概念 Top10 | `el-row` 两个 `el-col`：常规宽屏 `:lg="24"` 上下排列，超宽屏 `:xl="12"` 双栏 |
 | 历史记录 | 最近 30 条市场状态 | `el-collapse` 默展开 + `el-table` |
 
 ## 4. 数据契约与获取
@@ -117,11 +117,12 @@ const sections = reactive({
 ```
 
 - 不设置页面级 `max-width`，内容随主区铺满；卡片之间统一 `16px` 间距。
-- 主双栏使用 Element Plus 栅格：市场温度 `el-col :xs="24" :md="24" :lg="8"`，选股 `:xs="24" :md="24" :lg="16"`；992px 以下自然堆叠。
-- 热点双栏：行业与概念各 `:xs="24" :lg="12"`。
+- 主双栏使用 Element Plus 栅格：市场温度 `el-col :xs="24" :md="24" :lg="8"`，选股 `:xs="24" :md="24" :lg="16"`；1200px 以下自然堆叠。
+- 热点方向：常规宽屏（1200–1919px）行业与概念各占整行（`:lg="24"`），超宽屏（≥1920px）切换为 `:xl="12"` 双栏；这样两个榜单都能完整展示炒作风险与代表股列。
 - 指标网格：`grid-template-columns: repeat(4, minmax(0,1fr))`，`max-width: 1200px` 下 3 列，`768px` 下 2 列。
-- 表格统一 `size="small"`、`stripe`、`show-overflow-tooltip`；选股表 `max-height="420"`，热点表 `max-height="300"`，历史表 `max-height="320"`，均允许内部纵向滚动。
-- 选股表列宽：序号 48、股票 140、综合分 80、四因子各 64、长期价值 88、入选理由 `min-width: 220`。表格容器 `overflow-x: auto`，窄屏允许表格自身横向滚动，页面不滚动。
+- 表格统一 `size="small"`、`stripe`、`show-overflow-tooltip`；选股表 `max-height="420"`，历史表 `max-height="320"`，允许内部纵向滚动；热点榜只展示 Top 10，不使用内部纵向滚动，确保 10 行全部可见。
+- 选股表列宽：序号 40、股票 `min-width: 110`、综合分 74、四因子各 54、长期价值 76、入选理由 `min-width: 160`。这样在 1440px 右栏内无需横向滚动；更窄视口允许表格自身横向滚动，页面不滚动。
+- 热点表列宽：序号 38、名称 `min-width: 86`、热度 54、股票数 62、涨停数 60、单日/5日各 68、炒作风险 106、代表股 `min-width: 150`，整表约 692px，可在超宽屏半栏内完整展示。
 - 文本溢出：股票名/理由使用 `show-overflow-tooltip`；AI 报告使用 `white-space: pre-wrap` + `max-height: 220px` + `overflow-y: auto`，保留换行。
 
 ### 5.2 视觉一致性
@@ -163,7 +164,7 @@ const sections = reactive({
 1. **构建**：`cd StockAI-Console && npm run build`，必须成功；记录任何新增警告。
 2. **路由**：开发服务器访问 `/regime`、`/screener`，确认地址变为 `/market`；直接访问 `/market` 正常渲染。
 3. **导航**：侧边栏只有「市场」入口，选中态正确。
-4. **排版**：1440/1024/768 三档宽度检查双栏/堆叠、表格横向滚动、页面无横向滚动。
+4. **排版**：1920/1440/1024/768 四档宽度检查主双栏、热点上下/双栏切换、表格横向滚动、页面无横向滚动。
 5. **数据完整性**：对照 `specs/market-dashboard/spec.md` 的 Scenario 逐条核对市场状态、三风格榜单、热点双榜、历史记录。
 6. **降级**：停用或篡改任一接口（或浏览器网络面板阻断）验证单区块失败不影响其他区块。
 7. **深色模式**：切换后检查卡片、表格、标签、报告区对比度。
