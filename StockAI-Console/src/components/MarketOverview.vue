@@ -338,8 +338,8 @@ onMounted(refreshAll)
                 class="board-table"
                 empty-text="暂无候选股"
               >
-                <el-table-column type="index" label="#" width="48" />
-                <el-table-column label="股票" min-width="130">
+                <el-table-column type="index" label="#" width="40" />
+                <el-table-column label="股票" min-width="110">
                   <template #default="{ row }">
                     <div class="stock-cell">
                       <span class="stock-name">{{ row.name }}</span>
@@ -347,23 +347,23 @@ onMounted(refreshAll)
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column label="综合分" width="82" sortable prop="totalScore">
+                <el-table-column label="综合分" width="74" sortable prop="totalScore">
                   <template #default="{ row }">
                     <span class="score-value">{{ scoreText(row.totalScore) }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="valuation" label="估值" width="64" />
-                <el-table-column prop="growth" label="成长" width="64" />
-                <el-table-column prop="quality" label="质量" width="64" />
-                <el-table-column prop="momentum" label="动量" width="64" />
-                <el-table-column label="长期价值" width="88">
+                <el-table-column prop="valuation" label="估值" width="54" />
+                <el-table-column prop="growth" label="成长" width="54" />
+                <el-table-column prop="quality" label="质量" width="54" />
+                <el-table-column prop="momentum" label="动量" width="54" />
+                <el-table-column label="长期价值" width="76">
                   <template #default="{ row }">
                     <el-tag :type="ratingType(row.longTermRating)" size="small">
                       {{ ratingText(row.longTermRating) }}
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="reason" label="入选理由" min-width="220" show-overflow-tooltip />
+                <el-table-column prop="reason" label="入选理由" min-width="160" show-overflow-tooltip />
               </el-table>
             </template>
             <el-empty v-else description="暂无选股结果" :image-size="72" />
@@ -390,32 +390,31 @@ onMounted(refreshAll)
           show-icon
         />
         <el-row v-else-if="hotspotResult" :gutter="16">
-          <el-col v-for="board in hotspotBoards" :key="board.key" :xs="24" :lg="12" class="hotspot-col">
+          <el-col v-for="board in hotspotBoards" :key="board.key" :xs="24" :lg="24" :xl="12" class="hotspot-col">
             <h4 class="sub-title">{{ board.label }}</h4>
             <el-table
               :data="board.list"
               size="small"
               stripe
-              max-height="300"
               class="hotspot-table"
               empty-text="暂无热点数据"
             >
-              <el-table-column type="index" label="#" width="44" />
-              <el-table-column prop="name" :label="board.key === 'industries' ? '行业' : '概念'" min-width="96" />
-              <el-table-column prop="hotScore" label="热度" width="64" sortable />
-              <el-table-column prop="stockCount" label="股票数" width="70" />
-              <el-table-column prop="limitUpCount" label="涨停数" width="70" />
-              <el-table-column label="单日" width="78">
+              <el-table-column type="index" label="#" width="38" />
+              <el-table-column prop="name" :label="board.key === 'industries' ? '行业' : '概念'" min-width="86" />
+              <el-table-column prop="hotScore" label="热度" width="54" sortable />
+              <el-table-column prop="stockCount" label="股票数" width="62" />
+              <el-table-column prop="limitUpCount" label="涨停数" width="60" />
+              <el-table-column label="单日" width="68">
                 <template #default="{ row }">
                   <span :class="changeClass(row.dailyAvgChange)">{{ pctText(row.dailyAvgChange) }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="5日" width="78">
+              <el-table-column label="5日" width="68">
                 <template #default="{ row }">
                   <span :class="changeClass(row.fiveDayAvgChange)">{{ pctText(row.fiveDayAvgChange) }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="炒作风险" width="130">
+              <el-table-column label="炒作风险" width="106">
                 <template #default="{ row }">
                   <el-tooltip v-if="row.hypeBasis" :content="row.hypeBasis" placement="top">
                     <el-tag :type="hypeType(row.hypeLabel)" size="small">
@@ -427,7 +426,7 @@ onMounted(refreshAll)
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="代表股" min-width="180">
+              <el-table-column label="代表股" min-width="150">
                 <template #default="{ row }">
                   <div v-if="row.topStocks?.length" class="top-stocks">
                     <span
@@ -776,7 +775,7 @@ onMounted(refreshAll)
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: 1199px) {
   .panel-card {
     height: auto;
   }
@@ -821,6 +820,34 @@ onMounted(refreshAll)
   }
 }
 
+.dark .market-page {
+  color: #e2e8f0;
+}
+
+.dark .page-title,
+.dark .panel-title,
+.dark .regime-advice,
+.dark .indicator-value,
+.dark .stock-name,
+.dark .sub-title,
+.dark .report-heading {
+  color: #f1f5f9;
+}
+
+.dark .page-subtitle,
+.dark .trade-date,
+.dark .panel-meta,
+.dark .summary-label,
+.dark .summary-extra,
+.dark .muted,
+.dark .stock-symbol {
+  color: #94a3b8;
+}
+
+.dark .summary-value {
+  color: #f1f5f9;
+}
+
 .dark .summary-card {
   background: #1e293b;
   border-color: #334155;
@@ -837,7 +864,19 @@ onMounted(refreshAll)
   color: #cbd5e1;
 }
 
-.dark :deep(.el-table) {
+.dark .market-page :deep(.el-tabs__item) {
+  color: #94a3b8;
+}
+
+.dark .market-page :deep(.el-tabs__item.is-active) {
+  color: #60a5fa;
+}
+
+.dark .market-page :deep(.el-tabs__nav-wrap::after) {
+  background-color: #334155;
+}
+
+.dark .market-page :deep(.el-table) {
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;
   --el-table-header-bg-color: #1e293b;
@@ -845,9 +884,44 @@ onMounted(refreshAll)
   --el-table-text-color: #e2e8f0;
   --el-table-header-text-color: #cbd5e1;
   --el-table-row-hover-bg-color: #1e293b;
+  background: transparent;
+  color: #e2e8f0;
 }
 
-.dark :deep(.el-collapse) {
+.dark .market-page :deep(.el-table th.el-table__cell) {
+  background: #1e293b !important;
+  color: #cbd5e1;
+}
+
+.dark .market-page :deep(.el-table td.el-table__cell) {
+  background: transparent;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+.dark .market-page :deep(.el-table__row--striped td.el-table__cell) {
+  background: #172033 !important;
+}
+
+.dark .market-page :deep(.el-table__body tr:hover > td.el-table__cell) {
+  background: #1e293b !important;
+}
+
+.dark .market-page :deep(.el-table__inner-wrapper::before) {
+  background-color: #334155;
+}
+
+.dark .market-page :deep(.el-table__empty-text) {
+  color: #94a3b8;
+}
+
+.dark .market-page :deep(.el-collapse-item__header),
+.dark .market-page :deep(.el-collapse-item__content) {
+  background: transparent;
+  color: #e2e8f0;
+}
+
+.dark .market-page :deep(.el-collapse) {
   --el-collapse-header-bg-color: transparent;
   --el-collapse-content-bg-color: transparent;
   border-color: #334155;

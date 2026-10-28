@@ -116,7 +116,7 @@ onMounted(fetchNotifications)
           class="sidebar-menu"
           @select="handleMenuSelect"
           background-color="transparent"
-          text-color="var(--el-text-color-primary)"
+          :text-color="isDarkMode ? '#cbd5e1' : 'var(--el-text-color-primary)'"
           active-text-color="#409eff"
         >
           <el-menu-item index="/">
