@@ -1,0 +1,14 @@
+{
+  "change": "market-dashboard-merge",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "ccec5d917aff5146724efdc05b34b4ab9a0366f62340ce96a2c86d7e2d243e45",
+  "files": [
+    { "path": "docs/openspec/changes/market-dashboard-merge/proposal.md", "sha256": "6d662dd625edc7f547e3bc3db77eb1a328508171f81971720da301c3387fa1f1" },
+    { "path": "docs/openspec/changes/market-dashboard-merge/design.md", "sha256": "3b9eb2ebca3e566e61318c98a8ab83e140e907b3da2348d908d021f0534b8516" },
+    { "path": "docs/openspec/changes/market-dashboard-merge/tasks.md", "sha256": "890d7f412c7801452120af6e61303d0063ecc089a38843e3f19f0253d02f3819" },
+    { "path": "docs/openspec/changes/market-dashboard-merge/specs/market-dashboard/spec.md", "sha256": "75536a2d82c620f627fce186654ddbe6d335eb59ead2fc674a75ac38d1b536e8" }
+  ]
+}
