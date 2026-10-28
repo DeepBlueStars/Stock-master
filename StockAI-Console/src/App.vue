@@ -127,13 +127,9 @@ onMounted(fetchNotifications)
             <el-icon><Document /></el-icon>
             <span>股票</span>
           </el-menu-item>
-          <el-menu-item index="/regime">
-            <el-icon><Setting /></el-icon>
-            <span>温度计</span>
-          </el-menu-item>
-          <el-menu-item index="/screener">
+          <el-menu-item index="/market">
             <el-icon><TrendCharts /></el-icon>
-            <span>选股</span>
+            <span>市场</span>
           </el-menu-item>
           <el-menu-item index="/trade-plan">
             <el-icon><Notebook /></el-icon>

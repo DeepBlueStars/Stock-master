@@ -2,8 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AssetConfig from '../components/AssetConfig/AssetConfig.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Config from '../components/Config.vue'
-import MarketRegime from '../components/MarketRegime.vue'
-import StockScreener from '../components/StockScreener.vue'
+import MarketOverview from '../components/MarketOverview.vue'
 import TradePlan from '../components/TradePlan.vue'
 
 const router = createRouter({
@@ -25,14 +24,17 @@ const router = createRouter({
       component: Config
     },
     {
+      path: '/market',
+      name: '市场',
+      component: MarketOverview
+    },
+    {
       path: '/regime',
-      name: '温度计',
-      component: MarketRegime
+      redirect: '/market'
     },
     {
       path: '/screener',
-      name: '选股',
-      component: StockScreener
+      redirect: '/market'
     },
     {
       path: '/trade-plan',
