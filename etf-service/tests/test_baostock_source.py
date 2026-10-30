@@ -93,3 +93,23 @@ def test_fetch_daily_uses_unadjusted_adjustflag():
     src.fetch_stock_daily("000001")
     kwargs = src._bs.query_history_k_data_plus.call_args.kwargs
     assert kwargs["adjustflag"] == "3"
+
+
+def test_fetch_stock_daily_normalizes_compact_start_date():
+    src = BaostockSource()
+    src._bs = MagicMock()
+    src._bs.query_history_k_data_plus.return_value = _Rs([], [])
+
+    assert src.fetch_stock_daily("000002", start_date="20000101") is None
+    kwargs = src._bs.query_history_k_data_plus.call_args.kwargs
+    assert kwargs["start_date"] == "2000-01-01"
+
+
+def test_fetch_stock_daily_keeps_dashed_start_date():
+    src = BaostockSource()
+    src._bs = MagicMock()
+    src._bs.query_history_k_data_plus.return_value = _Rs([], [])
+
+    assert src.fetch_stock_daily("000002", start_date="2026-10-25") is None
+    kwargs = src._bs.query_history_k_data_plus.call_args.kwargs
+    assert kwargs["start_date"] == "2026-10-25"

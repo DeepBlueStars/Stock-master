@@ -19,7 +19,7 @@ class _FakeSource:
 
 def test_source_chain_order():
     chain = get_source_chain()
-    assert [s.name for s in chain] == ["akshare", "baostock", "tushare", "eastmoney_sina"]
+    assert [s.name for s in chain] == ["akshare", "baostock", "tushare", "tencent", "eastmoney_sina"]
 
 
 def test_fallback_uses_second_source_when_first_fails():

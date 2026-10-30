@@ -1,22 +1,63 @@
-from pymongo import MongoClient
-from pymongo.collection import Collection
-from typing import Dict, Any
+import logging
 import os
+import re
+from typing import Any, Dict, Optional
+
 from dotenv import load_dotenv
+from pymongo import MongoClient, UpdateOne
+from pymongo.collection import Collection
 
 # 加载环境变量
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
+DEFAULT_DB_NAME = "tradingagents"
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning("环境变量 %s=%s 不是整数，使用默认值 %s", name, raw, default)
+        return default
+
+
+def resolve_mongo_url(in_container: Optional[bool] = None) -> str:
+    """解析 MongoDB 连接串：MONGO_URL 优先；未设置时按运行环境选择默认地址。"""
+    url = os.getenv("MONGO_URL", "").strip()
+    if url:
+        return url
+    if in_container is None:
+        in_container = os.path.exists("/.dockerenv")
+    if in_container:
+        return f"mongodb://host.docker.internal:27017/{DEFAULT_DB_NAME}"
+    return f"mongodb://localhost:27017/{DEFAULT_DB_NAME}"
+
+
+def mask_mongo_url(url: str) -> str:
+    """隐藏连接串中的账号密码，避免日志泄露。"""
+    return re.sub(r"//[^/@]+@", "//***@", url)
+
+
 class MongoDBClient:
     def __init__(self):
         # 数据库连接配置
-        # self.mongo_url = os.getenv("MONGO_URL", "mongodb://admin:tradingagents123@192.168.31.88:27017/tradingagents?authSource=admin")
-        self.mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017/tradingagents")
-        self.db_name = os.getenv("MONGO_DB_NAME", "tradingagents")
-        
-        # 初始化客户端和数据库
-        self.client = MongoClient(self.mongo_url)
+        self.mongo_url = resolve_mongo_url()
+        self.db_name = os.getenv("MONGO_DB_NAME", DEFAULT_DB_NAME)
+
+        # 初始化客户端和数据库（缩短选择超时，连不上时尽快暴露问题）
+        self.client = MongoClient(
+            self.mongo_url,
+            serverSelectionTimeoutMS=_env_int("MONGO_SERVER_SELECTION_TIMEOUT_MS", 5000),
+            connectTimeoutMS=_env_int("MONGO_CONNECT_TIMEOUT_MS", 5000),
+        )
         self.db = self.client[self.db_name]
+        logger.info("MongoDB 连接目标: %s (db=%s)", mask_mongo_url(self.mongo_url), self.db_name)
+
         
         # 集合引用
         self.etf_basic_info: Collection = self.db["etf_basic_info"]
@@ -112,6 +153,25 @@ class MongoDBClient:
             print(f"更新个股日K线失败: {e}")
             return False
 
+    def bulk_upsert_stock_daily_kline(self, records: list) -> int:
+        """批量 upsert 个股日K线（单批次，去重键 symbol + trade_date）。"""
+        if not records:
+            return 0
+        try:
+            operations = [
+                UpdateOne(
+                    {"symbol": r["symbol"], "trade_date": r["trade_date"]},
+                    {"$set": r},
+                    upsert=True,
+                )
+                for r in records
+            ]
+            self.stock_daily_kline.bulk_write(operations, ordered=False)
+            return len(records)
+        except Exception as e:
+            logger.error("批量更新个股日K线失败: %s", e)
+            return 0
+
     def upsert_stock_fundamental(self, data: Dict[str, Any]) -> bool:
         """更新或插入个股财务指标（去重键 symbol + report_date）"""
         try:
@@ -167,6 +227,43 @@ class MongoDBClient:
     def get_constituent_symbols(self) -> list:
         """获取优质池全部成分股代码（去重）"""
         return list(self.index_constituents.distinct("symbol"))
+
+    def get_latest_trade_date(self, symbol: str) -> Optional[str]:
+        """返回某只个股在 stock_daily_kline 中的最新交易日（无数据返回 None）。"""
+        doc = self.stock_daily_kline.find_one(
+            {"symbol": symbol}, {"trade_date": 1}, sort=[("trade_date", -1)]
+        )
+        return doc.get("trade_date") if doc else None
+
+    def get_latest_stock_trade_date(self) -> Optional[str]:
+        """返回 stock_daily_kline 全集合的最新交易日（用于健康检查）。"""
+        doc = self.stock_daily_kline.find_one(
+            {}, {"trade_date": 1}, sort=[("trade_date", -1)]
+        )
+        return doc.get("trade_date") if doc else None
+
+    def ping(self) -> bool:
+        """检测数据库是否可达且认证通过，失败时打印排查提示并返回 False。"""
+        try:
+            self.client.admin.command("ping")
+        except Exception as e:
+            logger.error(
+                "MongoDB 不可达: %s | 连接串: %s | 容器内 localhost 指向容器自身，"
+                "请设置 MONGO_URL（如 mongodb://<mongo-host>:27017/%s）",
+                e, mask_mongo_url(self.mongo_url), self.db_name,
+            )
+            return False
+        try:
+            # ping 不要求认证；再执行一次需要权限的命令，才能发现账号密码/authSource 缺失
+            self.db.command("dbStats")
+        except Exception as e:
+            logger.error(
+                "MongoDB 已连通但认证/权限不足: %s | 连接串: %s | "
+                "请检查 MONGO_URL 中的账号密码与 authSource（如 ?authSource=admin）",
+                e, mask_mongo_url(self.mongo_url),
+            )
+            return False
+        return True
 
     def close(self):
         """关闭数据库连接"""

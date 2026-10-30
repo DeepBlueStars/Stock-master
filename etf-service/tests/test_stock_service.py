@@ -1,3 +1,4 @@
+from datetime import datetime
 from importlib import import_module
 from unittest.mock import patch
 
@@ -5,12 +6,23 @@ from app.services.stock_service import StockService
 
 
 class _FakeMongo:
-    def __init__(self, symbols):
+    def __init__(self, symbols, latest=None):
         self.symbols = symbols
+        self.latest = latest or {}
         self.written = set()
+        self.batches = []
 
     def get_constituent_symbols(self):
         return self.symbols
+
+    def get_latest_trade_date(self, symbol):
+        return self.latest.get(symbol)
+
+    def bulk_upsert_stock_daily_kline(self, records):
+        self.batches.append(len(records))
+        for data in records:
+            self.written.add((data["symbol"], data["trade_date"]))
+        return len(records)
 
     def upsert_stock_daily_kline(self, data):
         self.written.add((data["symbol"], data["trade_date"]))
@@ -48,6 +60,58 @@ def test_update_stock_daily_incremental_only_upserts():
         n = svc.update_stock_daily_incremental()
     assert n == 1
     assert ("600000", "2024-01-02") in svc.mongo.written
+
+
+def test_update_stock_daily_incremental_starts_after_latest_trade_date():
+    svc = StockService(mongo=_FakeMongo(["600000"], latest={"600000": "2024-01-02"}))
+    mod = import_module("app.services.stock_service")
+    captured = {}
+
+    def fake_fetch(sources, method, code, **kwargs):
+        captured["code"] = code
+        captured["start_date"] = kwargs.get("start_date")
+        return [_quote(code, "2024-01-03")]
+
+    with patch.object(mod, "fetch_with_fallback", side_effect=fake_fetch):
+        svc.update_stock_daily_incremental()
+
+    assert captured["code"] == "600000"
+    assert captured["start_date"] == "2024-01-03"
+
+
+def test_update_stock_daily_incremental_skips_symbol_already_up_to_date():
+    today = datetime.now().strftime("%Y-%m-%d")
+    svc = StockService(mongo=_FakeMongo(["600000"], latest={"600000": today}))
+    mod = import_module("app.services.stock_service")
+    with patch.object(mod, "fetch_with_fallback") as fetch:
+        svc.update_stock_daily_incremental()
+    fetch.assert_not_called()
+
+
+def test_update_stock_daily_incremental_defaults_to_dashed_start_date():
+    svc = StockService(mongo=_FakeMongo(["600000"]))
+    mod = import_module("app.services.stock_service")
+    captured = {}
+
+    def fake_fetch(sources, method, code, **kwargs):
+        captured["start_date"] = kwargs.get("start_date")
+        return []
+
+    with patch.object(mod, "fetch_with_fallback", side_effect=fake_fetch):
+        svc.update_stock_daily_incremental()
+
+    assert captured["start_date"] == "2000-01-01"
+
+
+def test_update_stock_daily_incremental_batches_bulk_writes():
+    svc = StockService(mongo=_FakeMongo(["600000"]))
+    mod = import_module("app.services.stock_service")
+    quotes = [_quote("600000", "2024-01-02") for _ in range(1001)]
+    with patch.object(mod, "fetch_with_fallback", return_value=quotes):
+        n = svc.update_stock_daily_incremental()
+
+    assert n == 1001
+    assert svc.mongo.batches == [1000, 1]
 
 
 def _fundamental(symbol):

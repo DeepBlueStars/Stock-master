@@ -19,3 +19,5 @@ trade-sentry/frontend/dist.tar.gz
 .tmp*
 
 .screenshots/
+
+*.log

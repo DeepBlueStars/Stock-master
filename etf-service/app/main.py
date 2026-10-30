@@ -7,6 +7,7 @@ import os
 try:
     from .api import api_router
     from .tasks.etf_task import start_scheduler
+    from .database.mongo import mongo_client
 except ImportError:
     import sys
     from pathlib import Path
@@ -14,6 +15,7 @@ except ImportError:
     sys.path.append(str(Path(__file__).parent.parent))
     from app.api import api_router
     from app.tasks.etf_task import start_scheduler
+    from app.database.mongo import mongo_client
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -42,6 +44,8 @@ async def root():
 # 启动定时任务
 @app.on_event("startup")
 async def startup_event():
+    # 启动时先确认数据库可达，连不上时立即在日志中给出明确排查提示
+    mongo_client.ping()
     start_scheduler()
 
 # 主函数

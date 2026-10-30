@@ -8,6 +8,14 @@ from .base import DataSource
 logger = logging.getLogger(__name__)
 
 
+def _normalize_date(value: Optional[str], default: str) -> str:
+    """baostock 只接受 YYYY-MM-DD；把 20000101 这类紧凑格式补齐横线。"""
+    s = (value or default).replace("/", "-").strip()
+    if len(s) == 8 and s.isdigit():
+        return f"{s[:4]}-{s[4:6]}-{s[6:]}"
+    return s
+
+
 class BaostockSource(DataSource):
     name = "baostock"
 
@@ -31,7 +39,7 @@ class BaostockSource(DataSource):
 
     def _fetch_daily(self, code: str, start_date: Optional[str], bs_code: str) -> Optional[List[dict]]:
         bs = self._ensure_login()
-        start = (start_date or "1990-01-01").replace("/", "-")
+        start = _normalize_date(start_date, "1990-01-01")
         end = datetime.now().strftime("%Y-%m-%d")
         rs = bs.query_history_k_data_plus(
             bs_code, "date,open,high,low,close,volume,amount",

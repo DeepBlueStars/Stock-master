@@ -194,7 +194,8 @@ bash deploy_linux.sh
 2. 解压到 `脚本目录/etf-service`（可用第二个参数指定，如 `/opt/etf-service/build`）；
 3. `docker build -t etf-service:latest <解压目录>`；
 4. 停止/删除旧容器后 `docker run` 新容器（容器名 `etf-service-container`，端口 `8887`）；
-5. `MONGO_URL`、`MONGO_DB_NAME`、`TUSHARE_TOKEN` 有值时自动 `-e` 透传；解压目录存在 `.env` 时通过 `--env-file` 加载（可放 `TZ=Asia/Shanghai` 等）。
+5. `MONGO_URL`、`MONGO_DB_NAME`、`TUSHARE_TOKEN` 有值时自动 `-e` 透传；**未设置 `MONGO_URL` 时会自动探测已运行的 MongoDB 容器**（加入其 Docker 网络），没有容器则回退 `mongodb://host.docker.internal:27017/tradingagents` 并添加 `--add-host`；解压目录存在 `.env` 时通过 `--env-file` 加载（可放 `TZ=Asia/Shanghai` 等）。
+6. 启动后脚本会请求 `http://localhost:8887/health`，直接显示 MongoDB 连通性和 `stock_daily_kline` 最新交易日。
 
 等价的手动命令：
 
@@ -230,7 +231,8 @@ curl -I http://localhost:8887/docs
 | 现象 | 原因 / 处理 |
 |---|---|
 | 容器启动后连不上数据库 | 容器内 `localhost` 是容器自身；改用宿主机 `host.docker.internal`（Linux 需 `--add-host=host.docker.internal:host-gateway`）或数据库真实 IP |
-| etf-service 接口报数据库错误 | 未设置 `MONGO_URL`，用了默认 `mongodb://localhost:27017/tradingagents` |
+| etf-service 接口报数据库错误 / 日志出现 `localhost:27017 Connection refused` | 容器内 `localhost` 是容器自身。优先在部署时 `export MONGO_URL='mongodb://<mongo-ip>:27017/tradingagents'`；新版 `deploy_linux.sh` 会优先复用已运行的 MongoDB 容器，否则回退宿主机 `host.docker.internal`。部署完成后访问 `http://localhost:8887/health` 确认 `mongo.ok=true` |
+| etf-service 日志出现 `command update requires authentication` / `code 13 Unauthorized` | MongoDB 开启了认证但连接串缺少账号密码或 `authSource`；设置 `MONGO_URL='mongodb://<user>:<password>@<host>:27017/tradingagents?authSource=admin'` 后重跑部署脚本，并用 `/health` 的 `mongo.ok=true` 确认 |
 | 前端刷新子路由 404 | nginx 缺少 `try_files $uri $uri/ /index.html`（前端是 history 路由模式） |
 | 前端请求后端失败 | 优先检查部署目录（与 `dist.tar.gz` 同级）`.env` 中的 `VITE_API_BASE_URL`，再执行 `deploy-stockai.sh` 重新生成 `/env.js`；手动部署时检查 nginx `/srv` 反代配置 |
 | 定时任务执行时间不对 | 容器默认 UTC，加 `-e TZ=Asia/Shanghai`（etf-service 可写入解压目录 `.env`） |

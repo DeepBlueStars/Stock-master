@@ -71,11 +71,26 @@ export TUSHARE_TOKEN='<token>'   # 可选
 
 | 环境变量 | 说明 |
 |---|---|
-| `MONGO_URL` | MongoDB 连接串；默认 `mongodb://localhost:27017/tradingagents`，容器内 localhost 指容器自身，必须覆盖 |
+| `MONGO_URL` | MongoDB 连接串；默认 `mongodb://localhost:27017/tradingagents`，容器内 localhost 指容器自身，必须覆盖。未设置时容器内会自动使用 `host.docker.internal` |
 | `MONGO_DB_NAME` | 数据库名，默认 `tradingagents` |
+| `MONGO_SERVER_SELECTION_TIMEOUT_MS` | 选择可用节点超时，默认 `5000` |
+| `MONGO_CONNECT_TIMEOUT_MS` | TCP 连接超时，默认 `5000` |
+| `SCHEDULER_TIMEZONE` | 定时任务时区，默认 `Asia/Shanghai` |
 | `TUSHARE_TOKEN` | Tushare Token，可选 |
 
 有值时脚本会自动 `-e` 透传给容器；解压目录下若存在 `.env`，会通过 `--env-file` 一并加载（例如写 `TZ=Asia/Shanghai`）。
+
+**MongoDB 地址自动探测**：未显式设置 `MONGO_URL` 时，脚本会先查找已运行的 MongoDB 容器并自动加入其 Docker 网络；找不到容器则回退到 `mongodb://host.docker.internal:27017/tradingagents` 并添加 `--add-host=host.docker.internal:host-gateway`。MongoDB 在其他机器时仍应显式 `export MONGO_URL='mongodb://<mongo-ip>:27017/tradingagents'`。
+
+## 每日数据采集与排查
+
+- 交易日 **15:30（Asia/Shanghai）** 执行个股 K 线增量更新；仅从库内最新交易日的次日开始拉取，不再每天重拉 2000 年以来的全部历史。
+- 首次全量补采按每 1000 条批量 upsert，避免逐条写入过慢；baostock 日期参数会自动归一化为 `YYYY-MM-DD`（兼容 `20000101` 写法）。
+- 采集/写入任务失败会自动重试 3 次；ETF 行情与基本信息写入 0 条时会记录明确错误，便于发现数据库不可达。
+- 启动时的补采任务（ETF 行情、基本信息、成分股、行业概念）由调度器在启动约 5 秒后异步执行，不会阻塞 FastAPI 就绪和定时任务注册。
+- 数据源顺序：akshare → baostock → tushare → 腾讯行情 → 东财/新浪；腾讯源独立于 akshare，作为兜底。
+- 健康检查：`curl -s http://localhost:8887/health`，返回 `mongo.ok` 与 `latest_stock_trade_date`；日志中 `MongoDB 连接目标` 会打印实际连接串（密码已脱敏）。
+- 日志出现 `command update requires authentication` / `code 13 Unauthorized`：MongoDB 开启了认证，但 `MONGO_URL` 未带账号密码或 `authSource`。示例：`mongodb://<user>:<password>@<host>:27017/tradingagents?authSource=admin`。`ping` 本身不需要权限，所以健康检查会额外执行 `dbStats` 验证认证。
 
 ## 验证
 
