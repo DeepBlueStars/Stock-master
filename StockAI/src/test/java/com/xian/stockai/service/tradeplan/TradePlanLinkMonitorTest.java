@@ -2,13 +2,13 @@ package com.xian.stockai.service.tradeplan;
 
 import com.xian.stockai.dao.PositionMonitorRepository;
 import com.xian.stockai.dao.PositionRepository;
-import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockIndustryConceptRepository;
 import com.xian.stockai.dao.TradePlanRepository;
 import com.xian.stockai.dao.UsersRepository;
 import com.xian.stockai.po.PositionMonitor;
 import com.xian.stockai.po.TradePlan;
 import com.xian.stockai.service.MonitorService;
+import com.xian.stockai.service.market.KlineProvider;
 import com.xian.stockai.vo.MonitorLinkRes;
 import com.xian.stockai.vo.Result;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +37,7 @@ class TradePlanLinkMonitorTest {
     @Mock
     private PositionRepository positionRepository;
     @Mock
-    private StockDailyKlineRepository stockDailyKlineRepository;
+    private KlineProvider klineProvider;
     @Mock
     private StockIndustryConceptRepository stockIndustryConceptRepository;
     @Mock
@@ -55,7 +55,7 @@ class TradePlanLinkMonitorTest {
 
     @BeforeEach
     void setUp() {
-        service = new TradePlanService(positionRepository, stockDailyKlineRepository,
+        service = new TradePlanService(positionRepository, klineProvider,
                 stockIndustryConceptRepository, usersRepository, tradePlanRepository,
                 positionMonitorRepository, monitorService, tradePlanCalculator);
     }

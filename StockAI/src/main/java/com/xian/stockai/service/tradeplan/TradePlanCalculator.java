@@ -67,7 +67,8 @@ public class TradePlanCalculator {
         plan.setDegraded(false);
 
         BigDecimal atr = indicator.atr(ascKlines, properties.getAtrPeriod());
-        if (atr == null || ascKlines == null || ascKlines.size() < properties.getMinKlineCount()
+        if (atr == null || atr.compareTo(BigDecimal.ZERO) <= 0
+                || ascKlines == null || ascKlines.size() < properties.getMinKlineCount()
                 || lastClose == null || lastClose.compareTo(BigDecimal.ZERO) <= 0) {
             applyDegraded(plan, position, "历史K线不足或现价缺失，降级为固定百分比");
             return plan;

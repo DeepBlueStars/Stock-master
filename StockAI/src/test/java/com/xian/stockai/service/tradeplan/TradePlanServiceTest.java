@@ -2,7 +2,6 @@ package com.xian.stockai.service.tradeplan;
 
 import com.xian.stockai.dao.PositionMonitorRepository;
 import com.xian.stockai.dao.PositionRepository;
-import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockIndustryConceptRepository;
 import com.xian.stockai.dao.TradePlanRepository;
 import com.xian.stockai.dao.UsersRepository;
@@ -12,6 +11,7 @@ import com.xian.stockai.po.StockIndustryConcept;
 import com.xian.stockai.po.TradePlan;
 import com.xian.stockai.po.Users;
 import com.xian.stockai.service.MonitorService;
+import com.xian.stockai.service.market.KlineProvider;
 import com.xian.stockai.vo.Result;
 import com.xian.stockai.vo.TradePlanRes;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ class TradePlanServiceTest {
     @Mock
     private PositionRepository positionRepository;
     @Mock
-    private StockDailyKlineRepository klineRepository;
+    private KlineProvider klineProvider;
     @Mock
     private StockIndustryConceptRepository industryConceptRepository;
     @Mock
@@ -62,7 +62,7 @@ class TradePlanServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TradePlanService(positionRepository, klineRepository, industryConceptRepository,
+        service = new TradePlanService(positionRepository, klineProvider, industryConceptRepository,
                 usersRepository, tradePlanRepository, positionMonitorRepository, monitorService, calculator);
     }
 
@@ -80,7 +80,7 @@ class TradePlanServiceTest {
     @Test
     void refreshPlanSavesPlanWithIndustryAndRemainingCash() {
         when(positionRepository.findByUserIdAndSymbol("u1", "600519")).thenReturn(position("600519", 100, "10.00"));
-        when(klineRepository.findTop21BySymbolOrderByTradeDateDesc("600519")).thenReturn(new ArrayList<>());
+        when(klineProvider.ascending("600519")).thenReturn(new ArrayList<>());
         when(monitorService.getCurrentPrice("600519")).thenReturn(new BigDecimal("10.00"));
         StockIndustryConcept concept = new StockIndustryConcept();
         concept.setIndustry("白酒");
@@ -103,7 +103,7 @@ class TradePlanServiceTest {
     @Test
     void refreshPlanPreservesMonitorLinkedFlag() {
         when(positionRepository.findByUserIdAndSymbol("u1", "600519")).thenReturn(position("600519", 100, "10.00"));
-        when(klineRepository.findTop21BySymbolOrderByTradeDateDesc("600519")).thenReturn(new ArrayList<>());
+        when(klineProvider.ascending("600519")).thenReturn(new ArrayList<>());
         when(monitorService.getCurrentPrice("600519")).thenReturn(new BigDecimal("10.00"));
         TradePlan existing = new TradePlan();
         existing.setId("p1");
@@ -134,7 +134,7 @@ class TradePlanServiceTest {
         when(positionRepository.findByUserId("u1")).thenReturn(List.of(position("600519", 100, "10.00")));
         when(tradePlanRepository.findByUserId("u1")).thenReturn(new ArrayList<>());
         when(positionRepository.findByUserIdAndSymbol("u1", "600519")).thenReturn(position("600519", 100, "10.00"));
-        when(klineRepository.findTop21BySymbolOrderByTradeDateDesc("600519")).thenReturn(new ArrayList<>());
+        when(klineProvider.ascending("600519")).thenReturn(new ArrayList<>());
         when(monitorService.getCurrentPrice("600519")).thenReturn(new BigDecimal("10.00"));
         TradePlan generated = new TradePlan();
         generated.setUserId("u1");

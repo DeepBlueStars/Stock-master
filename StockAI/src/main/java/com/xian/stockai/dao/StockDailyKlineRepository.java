@@ -11,6 +11,11 @@ public interface StockDailyKlineRepository extends MongoRepository<StockDailyKli
     List<StockDailyKline> findTop21BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc(String symbol,
                                                                                          String tradeDate);
 
+    List<StockDailyKline> findTop250BySymbolOrderByTradeDateDesc(String symbol);
+
+    List<StockDailyKline> findTop250BySymbolAndTradeDateLessThanEqualOrderByTradeDateDesc(String symbol,
+                                                                                          String tradeDate);
+
     boolean existsByTradeDate(String tradeDate);
 
     long countByTradeDate(String tradeDate);

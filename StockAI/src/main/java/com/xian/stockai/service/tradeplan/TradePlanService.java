@@ -2,7 +2,6 @@ package com.xian.stockai.service.tradeplan;
 
 import com.xian.stockai.dao.PositionMonitorRepository;
 import com.xian.stockai.dao.PositionRepository;
-import com.xian.stockai.dao.StockDailyKlineRepository;
 import com.xian.stockai.dao.StockIndustryConceptRepository;
 import com.xian.stockai.dao.TradePlanRepository;
 import com.xian.stockai.dao.UsersRepository;
@@ -13,6 +12,7 @@ import com.xian.stockai.po.StockIndustryConcept;
 import com.xian.stockai.po.TradePlan;
 import com.xian.stockai.po.Users;
 import com.xian.stockai.service.MonitorService;
+import com.xian.stockai.service.market.KlineProvider;
 import com.xian.stockai.vo.MonitorLinkRes;
 import com.xian.stockai.vo.TradePlanRes;
 import com.xian.stockai.vo.Result;
@@ -22,7 +22,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +36,7 @@ import java.util.Optional;
 public class TradePlanService {
 
     private final PositionRepository positionRepository;
-    private final StockDailyKlineRepository stockDailyKlineRepository;
+    private final KlineProvider klineProvider;
     private final StockIndustryConceptRepository stockIndustryConceptRepository;
     private final UsersRepository usersRepository;
     private final TradePlanRepository tradePlanRepository;
@@ -46,7 +45,7 @@ public class TradePlanService {
     private final TradePlanCalculator tradePlanCalculator;
 
     public TradePlanService(PositionRepository positionRepository,
-                            StockDailyKlineRepository stockDailyKlineRepository,
+                            KlineProvider klineProvider,
                             StockIndustryConceptRepository stockIndustryConceptRepository,
                             UsersRepository usersRepository,
                             TradePlanRepository tradePlanRepository,
@@ -54,7 +53,7 @@ public class TradePlanService {
                             MonitorService monitorService,
                             TradePlanCalculator tradePlanCalculator) {
         this.positionRepository = positionRepository;
-        this.stockDailyKlineRepository = stockDailyKlineRepository;
+        this.klineProvider = klineProvider;
         this.stockIndustryConceptRepository = stockIndustryConceptRepository;
         this.usersRepository = usersRepository;
         this.tradePlanRepository = tradePlanRepository;
@@ -161,15 +160,16 @@ public class TradePlanService {
         return Result.success(new MonitorLinkRes(before, MonitorLinkRes.After.from(monitor)));
     }
 
+    /**
+     * 取升序日线；个股走 stock_daily_kline，ETF 走 etf_daily_quotes，统一成同一结构。
+     */
     private List<StockDailyKline> ascendingKlines(String symbol) {
-        List<StockDailyKline> descKlines = stockDailyKlineRepository
-                .findTop21BySymbolOrderByTradeDateDesc(symbol);
-        if (descKlines == null || descKlines.isEmpty()) {
+        try {
+            return klineProvider.ascending(symbol);
+        } catch (Exception e) {
+            log.error("读取日线失败: symbol={}", symbol, e);
             return new ArrayList<>();
         }
-        List<StockDailyKline> ascKlines = new ArrayList<>(descKlines);
-        Collections.reverse(ascKlines);
-        return ascKlines;
     }
 
     private String resolveIndustry(String symbol) {
