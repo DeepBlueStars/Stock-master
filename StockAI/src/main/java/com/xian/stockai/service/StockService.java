@@ -202,8 +202,14 @@ public class StockService {
                 realizedReturn.setRealizedReturn(BigDecimal.ZERO);
             }
             realizedReturn.setUserId(stockTrade.getUserId());
-            // 2. 实际收益 = 最近实际收益 + 当前价格 * 卖出数量 - 持仓总价 - 过户费 - 佣金 - 印花税
-            BigDecimal profit = stockTrade.getPrice().multiply(BigDecimal.valueOf(stockTrade.getQuantity())).subtract(position.getTotalCost()).subtract(transferFee).subtract(commission).subtract(stampTax);
+            // 2. 实际收益 = 最近实际收益 + 当前价格 * 卖出数量 - 卖出部分对应成本 - 过户费 - 佣金 - 印花税
+            // 注意：分批卖出时只能摊销与卖出数量对应的成本，不能扣减整个持仓的总成本
+            BigDecimal soldCost = position.getTotalCost()
+                    .multiply(BigDecimal.valueOf(stockTrade.getQuantity()))
+                    .divide(BigDecimal.valueOf(position.getTotalQuantity()), 2, RoundingMode.HALF_UP);
+            BigDecimal profit = stockTrade.getPrice().multiply(BigDecimal.valueOf(stockTrade.getQuantity()))
+                    .subtract(soldCost)
+                    .subtract(transferFee).subtract(commission).subtract(stampTax);
             realizedReturn.setRealizedReturn(realizedReturn.getRealizedReturn().add(profit));
             realizedReturn.setCreatedAt(LocalDateTime.now());
             realizedReturn.setUpdatedAt(LocalDateTime.now());
