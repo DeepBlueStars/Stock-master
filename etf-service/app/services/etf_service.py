@@ -89,7 +89,11 @@ class ETFService:
         processed_symbol = symbol[-6:] if len(symbol) > 6 else symbol
         
         # 转换成交量和成交额（ak.fund_etf_spot_em返回的是数值类型）
+        # 东财快照的「成交量」单位是手，库里统一按股存（历史回填也是股），需 ×100；
+        # 新浪兜底源没有「开盘价」等字段且成交量本身就是股，不做换算。
         volume = float(etf_data.get("成交量", 0))
+        if "开盘价" in etf_data:
+            volume *= 100
         amount = float(etf_data.get("成交额", 0))
         
         # 处理涨跌幅字段，支持float和string类型

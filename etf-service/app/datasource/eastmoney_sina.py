@@ -72,3 +72,34 @@ class EastmoneySinaSource(DataSource):
                 updated_at=now,
             ).to_dict())
         return out
+
+    def fetch_etf_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
+        """新浪 ETF 历史日线（fund_etf_hist_sina）。
+
+        该接口不接收起始日期，返回全量历史，这里在本地按 start_date 截断。
+        成交量单位是股，与 etf_daily_quotes 存量口径一致，不做换算。
+        """
+        start = (start_date or "1990-01-01")[:10]
+        df = self.ak.fund_etf_hist_sina(symbol=to_market_symbol(code))
+        if df is None or df.empty:
+            return None
+        now = datetime.now()
+        out = []
+        for _, r in df.iterrows():
+            trade_date = to_date(row_get(r, "date"))
+            if not trade_date or trade_date < start:
+                continue
+            out.append(DailyQuote(
+                symbol=code,
+                trade_date=trade_date,
+                open=to_float(row_get(r, "open")),
+                high=to_float(row_get(r, "high")),
+                low=to_float(row_get(r, "low")),
+                close=to_float(row_get(r, "close")),
+                volume=to_float(row_get(r, "volume")),
+                amount=to_float(row_get(r, "amount")),
+                data_source=self.name,
+                created_at=now,
+                updated_at=now,
+            ).to_dict())
+        return out

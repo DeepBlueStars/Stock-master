@@ -69,6 +69,8 @@ class MongoDBClient:
         self.stock_industry_concept: Collection = self.db["stock_industry_concept"]
         self.index_constituents: Collection = self.db["index_constituents"]
         self.index_valuation: Collection = self.db["index_valuation"]
+        # 另一服务每日写入的全 A 股快照，作为 stock_daily_kline 的日更来源
+        self.market_quotes: Collection = self.db["market_quotes"]
     
     def get_etf_basic_info(self) -> list:
         """获取所有ETF基本信息"""
@@ -79,32 +81,61 @@ class MongoDBClient:
         return self.etf_basic_info.find_one({"symbol": symbol})
     
     def upsert_etf_daily_quote(self, data: Dict[str, Any]) -> bool:
-        """更新或插入ETF日行情数据"""
+        """写入ETF日行情快照（只补当日缺口，不覆盖已有行）。
+
+        日线归 KlineBackfillService 独占写入（交易日 16:20 拉真实历史），
+        这里的实时快照只负责「盘中首次落库」，让盘中有价可看。
+        两条路径若都做 upsert，快照会把回填好的 OHLC 覆盖成盘中值甚至 0，
+        所以这里改成 insert-if-absent，按 symbol + trade_date 判重。
+        """
         try:
-            # 提取updated_at的日期部分（YYYY-MM-DD）
-            updated_date = data["updated_at"].strftime("%Y-%m-%d")
-            
-            filter_query = {
-                "symbol": data["symbol"],
-                "updated_at": {
-                    "$gte": data["updated_at"].replace(hour=0, minute=0, second=0, microsecond=0),
-                    "$lt": data["updated_at"].replace(hour=23, minute=59, second=59, microsecond=999999)
-                }
-            }
-            
-            update_query = {
-                "$set": data
-            }
-            
-            self.etf_daily_quotes.update_one(
-                filter_query,
-                update_query,
-                upsert=True
+            trade_date = data.get("trade_date") or data["updated_at"].strftime("%Y-%m-%d")
+            existing = self.etf_daily_quotes.find_one(
+                {"symbol": data["symbol"], "trade_date": trade_date}, {"_id": 1}
             )
+            if existing is not None:
+                return True
+            self.etf_daily_quotes.insert_one(dict(data))
             return True
         except Exception as e:
             print(f"更新ETF日行情失败: {e}")
             return False
+
+    def bulk_upsert_etf_daily_quotes(self, records: list) -> int:
+        """批量 upsert ETF 日行情（去重键 symbol + trade_date）。
+
+        与 upsert_etf_daily_quote 的「updated_at 当天」去重相比，
+        按交易日去重才能支持历史回填，重复执行不会产生重复行。
+        """
+        if not records:
+            return 0
+        try:
+            operations = [
+                UpdateOne(
+                    {"symbol": r["symbol"], "trade_date": r["trade_date"]},
+                    {"$set": r},
+                    upsert=True,
+                )
+                for r in records
+            ]
+            self.etf_daily_quotes.bulk_write(operations, ordered=False)
+            return len(records)
+        except Exception as e:
+            logger.error("批量更新ETF日行情失败: %s", e)
+            return 0
+
+    def get_latest_etf_trade_date(self, symbol: str) -> Optional[str]:
+        """返回某只 ETF 在 etf_daily_quotes 中的最新交易日（无数据返回 None）。"""
+        doc = self.etf_daily_quotes.find_one(
+            {"symbol": symbol}, {"trade_date": 1}, sort=[("trade_date", -1)]
+        )
+        return doc.get("trade_date") if doc else None
+
+    def get_etf_symbols(self) -> list:
+        """返回 etf_basic_info 中的全部 ETF 代码（升序）。"""
+        return sorted(
+            d["symbol"] for d in self.etf_basic_info.find({}, {"symbol": 1}) if d.get("symbol")
+        )
     
     def upsert_etf_basic_info(self, data: Dict[str, Any]) -> bool:
         """更新或插入ETF基本信息"""
@@ -227,6 +258,15 @@ class MongoDBClient:
     def get_constituent_symbols(self) -> list:
         """获取优质池全部成分股代码（去重）"""
         return list(self.index_constituents.distinct("symbol"))
+
+    def get_market_quotes(self) -> list:
+        """读取 market_quotes 全部快照（只取复制到 stock_daily_kline 所需的字段）。"""
+        projection = {
+            "_id": 0, "symbol": 1, "code": 1, "trade_date": 1,
+            "open": 1, "high": 1, "low": 1, "close": 1,
+            "volume": 1, "amount": 1,
+        }
+        return list(self.market_quotes.find({}, projection))
 
     def get_latest_trade_date(self, symbol: str) -> Optional[str]:
         """返回某只个股在 stock_daily_kline 中的最新交易日（无数据返回 None）。"""

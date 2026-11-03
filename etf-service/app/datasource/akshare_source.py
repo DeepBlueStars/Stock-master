@@ -75,6 +75,37 @@ class AkshareSource(DataSource):
             ).to_dict())
         return out
 
+    def fetch_etf_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
+        """东财 ETF 历史日线（fund_etf_hist_em）。
+
+        注意：东财「成交量」单位是手，这里统一 ×100 折算成股，
+        与 etf_daily_quotes 中存量数据（新浪口径，单位股）保持一致。
+        """
+        start = (start_date or "19900101").replace("-", "")
+        end = self._now().strftime("%Y%m%d")
+        df = self.ak.fund_etf_hist_em(
+            symbol=code, period="daily", start_date=start, end_date=end, adjust=""
+        )
+        if df is None or df.empty:
+            return None
+        now = self._now()
+        out = []
+        for _, r in df.iterrows():
+            out.append(DailyQuote(
+                symbol=code,
+                trade_date=to_date(row_get(r, "日期", "date", "trade_date")),
+                open=to_float(row_get(r, "开盘", "open")),
+                high=to_float(row_get(r, "最高", "high")),
+                low=to_float(row_get(r, "最低", "low")),
+                close=to_float(row_get(r, "收盘", "close")),
+                volume=to_float(row_get(r, "成交量", "volume", "vol")) * 100,
+                amount=to_float(row_get(r, "成交额", "amount", "成交金额")),
+                data_source=self.name,
+                created_at=now,
+                updated_at=now,
+            ).to_dict())
+        return out
+
     def fetch_fundamentals(self, code: str) -> Optional[List[dict]]:
         pe = pb = 0.0
         try:

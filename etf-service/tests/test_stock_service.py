@@ -114,6 +114,116 @@ def test_update_stock_daily_incremental_batches_bulk_writes():
     assert svc.mongo.batches == [1000, 1]
 
 
+class _MarketQuoteMongo(_FakeMongo):
+    def __init__(self, quotes, symbols=None, latest=None):
+        super().__init__(symbols or [], latest)
+        self.quotes = quotes
+        self.records = []
+
+    def get_market_quotes(self):
+        return self.quotes
+
+    def bulk_upsert_stock_daily_kline(self, records):
+        self.records.extend(records)
+        return super().bulk_upsert_stock_daily_kline(records)
+
+
+def _market_quote(symbol="000001", trade_date="20261029", **overrides):
+    doc = {
+        "symbol": symbol, "code": symbol, "trade_date": trade_date,
+        "open": 11.53, "high": 11.67, "low": 11.40, "close": 11.64,
+        "volume": 186424507.0, "amount": 2152393886.0,
+    }
+    doc.update(overrides)
+    return doc
+
+
+def test_market_quote_trade_date_defaults_to_next_day():
+    svc = StockService(mongo=_FakeMongo([]))
+    assert svc._market_quote_trade_date("20261029") == "2026-10-30"
+    assert svc._market_quote_trade_date(None) == ""
+
+
+def test_sync_stock_daily_from_market_quotes_maps_snapshot(monkeypatch):
+    mod = import_module("app.services.stock_service")
+    now = datetime(2026, 10, 30, 16, 0)
+    monkeypatch.setattr(mod, "beijing_now", lambda: now)
+    svc = StockService(mongo=_MarketQuoteMongo([_market_quote()]))
+
+    n = svc.sync_stock_daily_from_market_quotes()
+
+    assert n == 1
+    record = svc.mongo.records[0]
+    assert record["symbol"] == "000001"
+    assert record["trade_date"] == "2026-10-30"
+    assert record["open"] == 11.53
+    assert record["high"] == 11.67
+    assert record["low"] == 11.40
+    assert record["close"] == 11.64
+    # 股 → 手
+    assert record["volume"] == 1864245.07
+    # amount 保持元
+    assert record["amount"] == 2152393886.0
+    assert record["data_source"] == "market_quotes"
+    assert record["created_at"] == record["updated_at"] == now
+
+
+def test_sync_stock_daily_from_market_quotes_skips_invalid_prices(monkeypatch):
+    mod = import_module("app.services.stock_service")
+    monkeypatch.setattr(mod, "beijing_now", lambda: datetime(2026, 10, 30, 16, 0))
+    quotes = [
+        _market_quote("000001"),
+        _market_quote("600400", close=float("nan")),
+        _market_quote("600519", open=0.0),
+    ]
+    svc = StockService(mongo=_MarketQuoteMongo(quotes))
+
+    n = svc.sync_stock_daily_from_market_quotes()
+
+    assert n == 1
+    assert [record["symbol"] for record in svc.mongo.records] == ["000001"]
+
+
+def test_sync_stock_daily_from_market_quotes_deduplicates_symbol_and_date(monkeypatch):
+    mod = import_module("app.services.stock_service")
+    monkeypatch.setattr(mod, "beijing_now", lambda: datetime(2026, 10, 30, 16, 0))
+    svc = StockService(mongo=_MarketQuoteMongo([
+        _market_quote("000001", close=11.64),
+        _market_quote("000001", close=11.65),
+    ]))
+
+    n = svc.sync_stock_daily_from_market_quotes()
+
+    assert n == 1
+    assert len(svc.mongo.records) == 1
+    assert svc.mongo.records[0]["close"] == 11.65
+
+
+def test_sync_stock_daily_from_market_quotes_falls_back_when_empty(monkeypatch):
+    mod = import_module("app.services.stock_service")
+    monkeypatch.setattr(mod, "beijing_now", lambda: datetime(2026, 10, 30, 16, 0))
+    svc = StockService(mongo=_MarketQuoteMongo([], symbols=["600000"]))
+
+    with patch.object(mod, "fetch_with_fallback", return_value=[_quote("600000", "2026-10-30")]):
+        n = svc.sync_stock_daily_from_market_quotes()
+
+    assert n == 1
+    assert ("600000", "2026-10-30") in svc.mongo.written
+
+
+def test_sync_stock_daily_from_market_quotes_falls_back_when_stale(monkeypatch):
+    mod = import_module("app.services.stock_service")
+    monkeypatch.setattr(mod, "beijing_now", lambda: datetime(2026, 10, 31, 16, 0))
+    svc = StockService(mongo=_MarketQuoteMongo([_market_quote()], symbols=["600000"]))
+
+    with patch.object(mod, "fetch_with_fallback", return_value=[_quote("600000", "2026-10-31")]):
+        n = svc.sync_stock_daily_from_market_quotes()
+
+    assert n == 1
+    assert ("600000", "2026-10-31") in svc.mongo.written
+    assert all(record["symbol"] != "000001" for record in svc.mongo.records)
+
+
 def _fundamental(symbol):
     return {"symbol": symbol, "report_date": "2024-03-31", "pe": 12.0, "pb": 1.5,
             "roe": 8.0, "revenue_yoy": 10.0, "profit_yoy": 15.0, "gross_margin": 30.0,

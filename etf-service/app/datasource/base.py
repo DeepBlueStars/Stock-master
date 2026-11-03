@@ -16,6 +16,9 @@ class DataSource:
     def fetch_stock_daily(self, code: str, start_date: Optional[str] = None) -> Optional[list]:
         return None
 
+    def fetch_etf_daily(self, code: str, start_date: Optional[str] = None) -> Optional[list]:
+        return None
+
     def fetch_fundamentals(self, code: str) -> Optional[list]:
         return None
 

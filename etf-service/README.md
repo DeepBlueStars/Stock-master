@@ -92,6 +92,52 @@ export TUSHARE_TOKEN='<token>'   # 可选
 - 健康检查：`curl -s http://localhost:8887/health`，返回 `mongo.ok` 与 `latest_stock_trade_date`；日志中 `MongoDB 连接目标` 会打印实际连接串（密码已脱敏）。
 - 日志出现 `command update requires authentication` / `code 13 Unauthorized`：MongoDB 开启了认证，但 `MONGO_URL` 未带账号密码或 `authSource`。示例：`mongodb://<user>:<password>@<host>:27017/tradingagents?authSource=admin`。`ping` 本身不需要权限，所以健康检查会额外执行 `dbStats` 验证认证。
 
+## 历史日线回填（一次性 / 按需）
+
+存量 `etf_daily_quotes` 是用「实时快照」一天天攒出来的（每只约 150 根，且周末也会写一行、
+东财改版后 `open/high/low` 一度被写成 0），止盈止损要算 MA60 和「持仓期最高收盘」，
+需要先补真实历史。回填脚本：
+
+```bash
+# 1. 先空跑几只看看数据质量（不写库）
+python -m app.tasks.backfill_kline --kind etf --limit 5 --dry-run
+
+# 2. 全量回填全部 ETF（约 1720 只，限速 1.2s/只，预计 40 分钟）
+python -m app.tasks.backfill_kline --kind etf --ensure-index
+
+# 3. 指定持仓标的
+python -m app.tasks.backfill_kline --kind etf --symbols 515180,512480 --full --ensure-index
+python -m app.tasks.backfill_kline --kind stock --symbols 600519,000001 --full --ensure-index
+
+# 4. 顺带清理周末快照写进去的假交易日（先不加参数，看统计再决定）
+python -m app.tasks.backfill_kline --kind etf --full --ensure-index --prune-orphans
+```
+
+要点：
+
+- **幂等**：按 `symbol + trade_date` upsert，可反复执行，不会产生重复行。
+- **增量**：不加 `--full` 时从库内最新交易日的次日起补，适合每日盘后跑一次。
+- **必须加 `--ensure-index`**：`etf_daily_quotes` / `stock_daily_kline` 目前**都没有 `(symbol, trade_date)` 索引**，
+  逐行 upsert 会退化成全表扫描（实测 100ms/行，1661 行要 160 秒；建索引后 1.1 秒）。
+- **限速与熔断**：默认 1.2s/只，连续 5 只全源失败即中止，避免在被封禁时继续打接口。
+- **数据源顺序**：ETF 走新浪（`fund_etf_hist_sina`，东财被 IP 封禁时仍可用）→ 东财（`fund_etf_hist_em`）；
+  个股走新浪（`stock_zh_a_daily`）→ 东财 → 腾讯。
+- **成交量单位**统一为「股」：东财接口返回「手」，脚本内 ×100 折算；新浪本身就是股。
+- 连接串：默认 `localhost`，回填生产库时用环境变量 `MONGO_URL` 指定。
+
+## 日线自动更新
+
+交易日 **16:20** 由调度器任务 `update_kline_incremental` 调用 `KlineBackfillService.run()`，
+对 ETF 与个股各跑一次增量（`--full` 关闭），幂等 upsert，失败自动重试 2 次。
+
+写入权限约定：
+
+- `etf_daily_quotes` / `stock_daily_kline` 的**权威写入方是回填服务**（完整 OHLC，成交量按「股」）。
+- 30 分钟一次的实时快照任务只做 **insert-if-absent**：当日已有行就跳过，绝不覆盖回填结果。
+  否则快照会把盘中的 `open/high/low`（含 0 值）盖到收盘后的真实日线上。
+- 手工补历史仍用上一节的 CLI；日常运维不需要手动执行。
+
+
 ## 验证
 
 ```bash

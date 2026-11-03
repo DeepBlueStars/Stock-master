@@ -59,7 +59,8 @@ def test_start_scheduler_registers_data_jobs(monkeypatch):
     monkeypatch.setattr(etf_task, "update_stock_industry_concept", lambda: None)
     etf_task.start_scheduler()
     assert "update_index_daily" in jobs
-    assert "update_stock_daily_incremental" in jobs
+    assert "update_stock_daily_from_market_quotes" in jobs
+    assert "update_stock_daily_incremental" not in jobs
     assert "update_index_constituents" in jobs
     assert "update_stock_fundamentals" in jobs
     assert "update_stock_industry_concept" in jobs
@@ -123,9 +124,20 @@ def test_start_scheduler_sets_retry_friendly_job_options(monkeypatch):
     monkeypatch.setattr(etf_task, "update_stock_industry_concept", lambda: None)
     etf_task.start_scheduler()
 
-    job = next(j for j in jobs if j["id"] == "update_stock_daily_incremental")
+    job = next(j for j in jobs if j["id"] == "update_stock_daily_from_market_quotes")
     assert job["misfire_grace_time"] == 12 * 3600
     assert job["coalesce"] is True
+    assert "hour='16'" in str(job["trigger"])
+
+
+def test_update_stock_daily_from_market_quotes_calls_service(monkeypatch):
+    from app.tasks import etf_task
+
+    monkeypatch.setattr(etf_task.mongo_client, "ping", lambda: True)
+    with patch.object(etf_task, "stock_service") as svc:
+        svc.sync_stock_daily_from_market_quotes.return_value = 5576
+        etf_task.update_stock_daily_from_market_quotes()
+        svc.sync_stock_daily_from_market_quotes.assert_called_once()
 
 
 def test_scheduler_uses_asia_shanghai_timezone():
@@ -178,3 +190,83 @@ def test_ensure_mongo_raises_when_ping_fails(monkeypatch):
     monkeypatch.setattr(etf_task.mongo_client, "ping", lambda: False)
     with pytest.raises(RuntimeError):
         etf_task._ensure_mongo()
+
+
+def test_start_scheduler_registers_daily_kline_incremental_at_1620(monkeypatch):
+    from app.tasks import etf_task
+
+    jobs = {}
+
+    class _Sched:
+        running = False
+
+        def add_job(self, **kwargs):
+            jobs[kwargs["id"]] = kwargs
+
+        def start(self):
+            self.running = True
+
+    monkeypatch.setattr(etf_task, "scheduler", _Sched())
+    etf_task.start_scheduler()
+
+    job = jobs["update_kline_incremental"]
+    trigger = str(job["trigger"])
+    assert job["func"] is etf_task.update_kline_incremental
+    assert "day_of_week='mon-fri'" in trigger
+    assert "hour='16'" in trigger
+    assert "minute='20'" in trigger
+
+
+def test_update_kline_incremental_covers_etf_and_stock(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.tasks import etf_task
+
+    calls = []
+
+    class _FakeBackfill:
+        def run(self, kind, **kwargs):
+            calls.append((kind, kwargs))
+            return SimpleNamespace(total=3, ok=3, skipped=0, failed=0, rows=42)
+
+    monkeypatch.setattr(etf_task, "_ensure_mongo", lambda: None)
+    monkeypatch.setattr(etf_task, "KlineBackfillService", _FakeBackfill)
+
+    etf_task._update_kline_incremental_once()
+
+    assert [kind for kind, _ in calls] == [etf_task.KIND_ETF, etf_task.KIND_STOCK]
+    assert all(kwargs == {"ensure_index": True} for _, kwargs in calls)
+
+
+def test_update_kline_incremental_raises_when_every_symbol_fails(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.tasks import etf_task
+
+    class _AllFailed:
+        def run(self, kind, **kwargs):
+            return SimpleNamespace(total=2, ok=0, skipped=0, failed=2, rows=0)
+
+    monkeypatch.setattr(etf_task, "_ensure_mongo", lambda: None)
+    monkeypatch.setattr(etf_task, "KlineBackfillService", _AllFailed)
+
+    with pytest.raises(RuntimeError):
+        etf_task._update_kline_incremental_once()
+
+
+def test_snapshot_skips_weekend(monkeypatch):
+    from datetime import datetime as real_datetime
+
+    from app.tasks import etf_task
+
+    class _SaturdayDatetime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return real_datetime(2026, 10, 31, 10, 0)  # 周六
+
+    monkeypatch.setattr(etf_task, "datetime", _SaturdayDatetime)
+    monkeypatch.setattr(
+        etf_task, "_ensure_mongo", lambda: pytest.fail("周末不应写 ETF 日行情快照")
+    )
+
+    etf_task._update_etf_daily_quotes_once()

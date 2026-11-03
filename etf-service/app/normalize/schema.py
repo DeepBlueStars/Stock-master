@@ -1,6 +1,13 @@
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, List
+
+BEIJING_TZ = timezone(timedelta(hours=8))
+
+
+def beijing_now() -> datetime:
+    """返回北京时间（naive datetime）：容器时区为 UTC 时也不会偏 8 小时。"""
+    return datetime.now(timezone.utc).astimezone(BEIJING_TZ).replace(tzinfo=None)
 
 
 @dataclass
@@ -89,11 +96,15 @@ def row_get(row: Any, *names: str) -> Any:
 
 
 def to_market_symbol(code: str) -> str:
-    """6 位代码 → 带市场前缀（sh/sz）；已是前缀形式则原样返回小写。"""
+    """6 位代码 → 带市场前缀（sh/sz）；已是前缀形式则原样返回小写。
+
+    沪市：6 开头（股票）、5 开头（ETF/LOF）、9 开头（B 股）；
+    其余（0/1/2/3）归深市。
+    """
     code = code.strip()
     if code.lower().startswith(("sh", "sz")):
         return code.lower()
-    if code.startswith("6"):
+    if code.startswith(("6", "5", "9")):
         return "sh" + code
     return "sz" + code
 

@@ -36,3 +36,6 @@ def test_to_market_symbol():
     assert to_market_symbol("600000") == "sh600000"
     assert to_market_symbol("000001") == "sz000001"
     assert to_market_symbol("sh600000") == "sh600000"
+    # 5 开头是沪市 ETF/LOF，不能归到深市
+    assert to_market_symbol("515180") == "sh515180"
+    assert to_market_symbol("159919") == "sz159919"

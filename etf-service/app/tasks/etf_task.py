@@ -15,6 +15,7 @@ from .data_tasks import (
     update_stock_industry_concept,
 )
 from ..services.index_service import index_service
+from ..services.kline_backfill_service import KIND_ETF, KIND_STOCK, KlineBackfillService
 from ..services.stock_service import stock_service
 from ..services.valuation_service import valuation_service
 
@@ -85,6 +86,10 @@ def _schedule_startup_jobs():
 
 
 def _update_etf_daily_quotes_once():
+    # 周末不产生交易日数据，快照写进去的就是周五收盘的复制行，属于脏数据
+    if datetime.now().weekday() >= 5:
+        logger.info("周末非交易日，跳过ETF日行情快照")
+        return
     _ensure_mongo()
     all_etf_data = etf_service.get_all_etf_data_for_db()
     if not all_etf_data:
@@ -139,8 +144,35 @@ def update_index_valuation():
 
 
 def update_stock_daily_incremental():
-    """增量更新个股K线（失败自动重试）。"""
+    """增量更新个股K线（仅作为 market_quotes 无当日数据时的兜底）。"""
     run_with_retry("增量更新个股K线", _with_mongo(stock_service.update_stock_daily_incremental), delay=10)
+
+
+def _update_kline_incremental_once():
+    """交易日收盘后按真实历史增量补全 ETF 与个股日线。
+
+    这条路径是 etf_daily_quotes / stock_daily_kline 的唯一权威写入口：
+    与 30 分钟实时快照不同，它带完整 OHLC、成交量按「股」存储，并且是可幂等的 upsert。
+    """
+    _ensure_mongo()
+    service = KlineBackfillService()
+    summary = []
+    for kind in (KIND_ETF, KIND_STOCK):
+        stats = service.run(kind, ensure_index=True)
+        summary.append(f"{kind}: 成功 {stats.ok}，跳过 {stats.skipped}，失败 {stats.failed}，写入 {stats.rows} 行")
+        if stats.total and stats.failed >= stats.total:
+            raise RuntimeError(f"{kind} 日线增量全部失败，请检查数据源是否可用")
+    logger.info("日线增量补全完成 —— %s", "；".join(summary))
+
+
+def update_kline_incremental():
+    """增量补全 ETF/个股日线（失败自动重试）。"""
+    run_with_retry("增量补全日线", _update_kline_incremental_once, attempts=2, delay=30)
+
+
+def update_stock_daily_from_market_quotes():
+    """从 market_quotes 复制当日个股K线（失败自动重试）。"""
+    run_with_retry("同步个股K线", _with_mongo(stock_service.sync_stock_daily_from_market_quotes), delay=10)
 
 
 def start_scheduler():
@@ -186,10 +218,19 @@ def start_scheduler():
             )
 
             scheduler.add_job(
-                func=update_stock_daily_incremental,
-                trigger=CronTrigger(day_of_week="mon-fri", hour=15, minute=30),
-                id="update_stock_daily_incremental",
-                name="交易日15:30后增量更新个股K线",
+                func=update_stock_daily_from_market_quotes,
+                trigger=CronTrigger(day_of_week="mon-fri", hour=16, minute=0),
+                id="update_stock_daily_from_market_quotes",
+                name="交易日16:00从market_quotes同步个股K线",
+                replace_existing=True,
+                **DAILY_JOB_OPTIONS,
+            )
+
+            scheduler.add_job(
+                func=update_kline_incremental,
+                trigger=CronTrigger(day_of_week="mon-fri", hour=16, minute=20),
+                id="update_kline_incremental",
+                name="交易日16:20增量补全ETF与个股日线",
                 replace_existing=True,
                 **DAILY_JOB_OPTIONS,
             )
