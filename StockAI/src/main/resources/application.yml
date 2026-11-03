@@ -5,6 +5,14 @@ spring:
   application:
     name: StockAI
   ai:
+    # MCP Server：外部 AI 客户端通过 SSE 端点 /sse 调用交易与持仓工具
+    mcp:
+      server:
+        name: stockai-mcp
+        version: 1.0.0
+        instructions: "StockAI 交易与持仓服务。可买入/卖出持仓，并查询持仓及预设的止盈止损价格。"
+        capabilities:
+          tool: true
     openai:
      api-key: sk-fbad694281a4480488760a1cd09b83d7
      base-url: https://api.deepseek.com
@@ -67,6 +75,11 @@ screening:
       growth: 0.25
       quality: 0.30
       momentum: 0.20
+
+stockai:
+  mcp:
+    # MCP 工具未传 userId 时使用的默认用户（与 StockAI-Console 当前用户一致）
+    default-user-id: "6928fca14f206ada1b7a9269"
 
 # 交易计划：ATR 参数、批次档位与周报配置
 trade-plan:

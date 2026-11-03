@@ -32,7 +32,8 @@ def test_fetch_stock_daily_maps_tencent_fields():
     assert quote["close"] == 6.60
     assert quote["high"] == 6.65
     assert quote["low"] == 6.60
-    assert quote["volume"] == 220667.0
+    # 腾讯是「手」，入库统一成「股」
+    assert quote["volume"] == 22066700.0
     assert quote["data_source"] == "tencent"
     assert get.call_args.kwargs["params"]["param"].startswith("sh600000,day,2024-01-01,")
 

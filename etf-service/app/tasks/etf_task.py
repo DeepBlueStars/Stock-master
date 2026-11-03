@@ -149,25 +149,53 @@ def update_stock_daily_incremental():
 
 
 def _update_kline_incremental_once():
-    """交易日收盘后按真实历史增量补全 ETF 与个股日线。
+    """交易日收盘后增量补全「持仓 + 交易计划 + 自选股」的日线。
 
     这条路径是 etf_daily_quotes / stock_daily_kline 的唯一权威写入口：
     与 30 分钟实时快照不同，它带完整 OHLC、成交量按「股」存储，并且是可幂等的 upsert。
+    只覆盖关注池而非全市场——全市场 2440 只按限速要一个多小时，会跨过 17:30 的判定时点；
+    全量刷新交给周六凌晨的 update_kline_weekly_sweep。
     """
     _ensure_mongo()
-    service = KlineBackfillService()
+    service = KlineBackfillService(sleep_seconds=0.5)
     summary = []
     for kind in (KIND_ETF, KIND_STOCK):
-        stats = service.run(kind, ensure_index=True)
-        summary.append(f"{kind}: 成功 {stats.ok}，跳过 {stats.skipped}，失败 {stats.failed}，写入 {stats.rows} 行")
+        targets = service.focus_symbols(kind)
+        if not targets:
+            summary.append(f"{kind}: 关注池为空，跳过")
+            continue
+        stats = service.run(kind, symbols=targets, ensure_index=True)
+        summary.append(
+            f"{kind}: {len(targets)} 只，成功 {stats.ok}，失败 {stats.failed}，写入 {stats.rows} 行"
+        )
         if stats.total and stats.failed >= stats.total:
             raise RuntimeError(f"{kind} 日线增量全部失败，请检查数据源是否可用")
     logger.info("日线增量补全完成 —— %s", "；".join(summary))
 
 
 def update_kline_incremental():
-    """增量补全 ETF/个股日线（失败自动重试）。"""
+    """增量补全关注池日线（失败自动重试）。"""
     run_with_retry("增量补全日线", _update_kline_incremental_once, attempts=2, delay=30)
+
+
+def _update_kline_weekly_sweep_once():
+    """周末全量扫一遍，把一周里没进关注池的标的补齐（覆盖 10 天，含节假日）。"""
+    _ensure_mongo()
+    service = KlineBackfillService(sleep_seconds=0.5, incremental_overlap_days=10)
+    summary = []
+    for kind in (KIND_ETF, KIND_STOCK):
+        stats = service.run(kind, ensure_index=True)
+        summary.append(
+            f"{kind}: 成功 {stats.ok}，跳过 {stats.skipped}，失败 {stats.failed}，写入 {stats.rows} 行"
+        )
+        if stats.total and stats.failed >= stats.total:
+            raise RuntimeError(f"{kind} 全量补全全部失败，请检查数据源是否可用")
+    logger.info("周度全量补全完成 —— %s", "；".join(summary))
+
+
+def update_kline_weekly_sweep():
+    """周度全市场补全（失败不重试，下周还有一轮）。"""
+    run_with_retry("周度全量补全日线", _update_kline_weekly_sweep_once, attempts=1, delay=0)
 
 
 def update_stock_daily_from_market_quotes():
@@ -230,7 +258,17 @@ def start_scheduler():
                 func=update_kline_incremental,
                 trigger=CronTrigger(day_of_week="mon-fri", hour=16, minute=20),
                 id="update_kline_incremental",
-                name="交易日16:20增量补全ETF与个股日线",
+                name="交易日16:20增量补全关注池日线",
+                replace_existing=True,
+                **DAILY_JOB_OPTIONS,
+            )
+
+            # 全市场 2440 只逐个请求要一个多小时，放周末凌晨跑，不挡盘后判定
+            scheduler.add_job(
+                func=update_kline_weekly_sweep,
+                trigger=CronTrigger(day_of_week="sat", hour=2, minute=0),
+                id="update_kline_weekly_sweep",
+                name="周六02:00全市场补全日线",
                 replace_existing=True,
                 **DAILY_JOB_OPTIONS,
             )

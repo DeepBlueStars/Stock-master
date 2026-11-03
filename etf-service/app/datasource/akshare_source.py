@@ -67,7 +67,8 @@ class AkshareSource(DataSource):
                 high=to_float(row_get(r, "最高", "high")),
                 low=to_float(row_get(r, "最低", "low")),
                 close=to_float(row_get(r, "收盘", "close")),
-                volume=to_float(row_get(r, "成交量", "volume", "vol")),
+                # 东财「成交量」单位是「手」，库里统一按「股」存
+                volume=to_float(row_get(r, "成交量", "volume", "vol")) * 100,
                 amount=to_float(row_get(r, "成交额", "amount")),
                 data_source=self.name,
                 created_at=now,

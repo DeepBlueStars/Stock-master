@@ -216,8 +216,44 @@ def test_start_scheduler_registers_daily_kline_incremental_at_1620(monkeypatch):
     assert "hour='16'" in trigger
     assert "minute='20'" in trigger
 
+    sweep = jobs["update_kline_weekly_sweep"]
+    sweep_trigger = str(sweep["trigger"])
+    assert sweep["func"] is etf_task.update_kline_weekly_sweep
+    assert "day_of_week='sat'" in sweep_trigger
+    assert "hour='2'" in sweep_trigger
 
-def test_update_kline_incremental_covers_etf_and_stock(monkeypatch):
+
+def test_update_kline_incremental_only_covers_focus_pool(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.tasks import etf_task
+
+    calls = []
+    focus = {"etf": ["515180"], "stock": ["600519", "000001"]}
+
+    class _FakeBackfill:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def focus_symbols(self, kind):
+            return focus[kind]
+
+        def run(self, kind, **kwargs):
+            calls.append((kind, kwargs))
+            return SimpleNamespace(total=len(kwargs["symbols"]), ok=2, skipped=0, failed=0, rows=10)
+
+    monkeypatch.setattr(etf_task, "_ensure_mongo", lambda: None)
+    monkeypatch.setattr(etf_task, "KlineBackfillService", _FakeBackfill)
+
+    etf_task._update_kline_incremental_once()
+
+    assert calls == [
+        ("etf", {"symbols": ["515180"], "ensure_index": True}),
+        ("stock", {"symbols": ["600519", "000001"], "ensure_index": True}),
+    ]
+
+
+def test_update_kline_incremental_skips_empty_focus_pool(monkeypatch):
     from types import SimpleNamespace
 
     from app.tasks import etf_task
@@ -225,17 +261,22 @@ def test_update_kline_incremental_covers_etf_and_stock(monkeypatch):
     calls = []
 
     class _FakeBackfill:
+        def __init__(self, **kwargs):
+            pass
+
+        def focus_symbols(self, kind):
+            return []
+
         def run(self, kind, **kwargs):
-            calls.append((kind, kwargs))
-            return SimpleNamespace(total=3, ok=3, skipped=0, failed=0, rows=42)
+            calls.append(kind)
+            return SimpleNamespace(total=0, ok=0, skipped=0, failed=0, rows=0)
 
     monkeypatch.setattr(etf_task, "_ensure_mongo", lambda: None)
     monkeypatch.setattr(etf_task, "KlineBackfillService", _FakeBackfill)
 
     etf_task._update_kline_incremental_once()
 
-    assert [kind for kind, _ in calls] == [etf_task.KIND_ETF, etf_task.KIND_STOCK]
-    assert all(kwargs == {"ensure_index": True} for _, kwargs in calls)
+    assert calls == []
 
 
 def test_update_kline_incremental_raises_when_every_symbol_fails(monkeypatch):
@@ -244,6 +285,12 @@ def test_update_kline_incremental_raises_when_every_symbol_fails(monkeypatch):
     from app.tasks import etf_task
 
     class _AllFailed:
+        def __init__(self, **kwargs):
+            pass
+
+        def focus_symbols(self, kind):
+            return ["515180"]
+
         def run(self, kind, **kwargs):
             return SimpleNamespace(total=2, ok=0, skipped=0, failed=2, rows=0)
 

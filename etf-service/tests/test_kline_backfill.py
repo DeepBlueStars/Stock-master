@@ -143,6 +143,21 @@ def test_clean_rows_drops_future_dates():
     assert cleaned == []
 
 
+def test_focus_symbols_splits_by_kind_and_includes_favorites():
+    mongo = _FakeMongo()
+    mongo.db = _FakeDB({
+        "position": _FakeCollection([{"symbol": "600519"}, {"symbol": "515180"}]),
+        "trade_plans": _FakeCollection([{"symbol": "000001"}]),
+        "user_favorites": _FakeCollection(
+            [{"favorites": [{"stock_code": "300750"}, {"stock_code": "159919"}]}]
+        ),
+    })
+    service = KlineBackfillService(mongo=mongo, sleep_seconds=0)
+
+    assert service.focus_symbols(KIND_STOCK) == ["000001", "300750", "600519"]
+    assert service.focus_symbols(KIND_ETF) == ["159919", "515180"]
+
+
 def test_next_start_backs_off_to_overwrite_recent_rows():
     """增量要回溯几天，才能覆盖快照先插进去的当日行。"""
     service = KlineBackfillService(mongo=_FakeMongo(), sleep_seconds=0, incremental_overlap_days=5)

@@ -48,7 +48,8 @@ class TencentSource(DataSource):
                 close=to_float(row[2]),
                 high=to_float(row[3]),
                 low=to_float(row[4]),
-                volume=to_float(row[5]),
+                # 腾讯返回的成交量单位是「手」，库里统一按「股」存，×100 后再入库
+                volume=to_float(row[5]) * 100,
                 amount=0.0,
                 data_source=self.name,
                 created_at=now,

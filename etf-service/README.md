@@ -127,8 +127,14 @@ python -m app.tasks.backfill_kline --kind etf --full --ensure-index --prune-orph
 
 ## 日线自动更新
 
-交易日 **16:20** 由调度器任务 `update_kline_incremental` 调用 `KlineBackfillService.run()`，
-对 ETF 与个股各跑一次增量（`--full` 关闭），幂等 upsert，失败自动重试 2 次。
+分两档，都是为了不让「补数据」挡住收盘后的判定：
+
+- **每日 16:20**（`update_kline_incremental`，交易日）：只补**关注池**——`position`、`trade_plans`、
+  `user_favorites` 里出现的标的，按 ETF / 个股分开跑增量（`--full` 关闭）。现库 12 只，约 30 秒。
+- **每周六 02:00**（`update_kline_weekly_sweep`，全量）：把全市场 1720 只 ETF + 720 只个股各扫一遍。
+  2440 只逐个请求要一个多小时，放在周末凌晨才不会和 17:30 的止盈止损判定抢时间。
+
+两者都幂等 upsert，失败重试；关注池为空时直接跳过，不会退化成全市场。
 
 写入权限约定：
 

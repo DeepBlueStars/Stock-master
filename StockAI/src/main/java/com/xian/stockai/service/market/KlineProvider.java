@@ -88,7 +88,7 @@ public class KlineProvider {
         List<StockDailyKline> result = new ArrayList<>(klines.size());
         for (StockDailyKline kline : klines) {
             StockDailyKline sanitized = sanitize(kline.getSymbol(), kline.getTradeDate(), kline.getOpen(),
-                    kline.getHigh(), kline.getLow(), kline.getClose(), kline.getAmount());
+                    kline.getHigh(), kline.getLow(), kline.getClose(), kline.getAmount(), kline.getAdjFactor());
             if (sanitized != null) {
                 result.add(sanitized);
             }
@@ -108,7 +108,7 @@ public class KlineProvider {
                 missingOhlc++;
             }
             StockDailyKline kline = sanitize(quote.getSymbol(), quote.getTradeDate(), quote.getOpen(),
-                    quote.getHigh(), quote.getLow(), quote.getClose(), quote.getAmount());
+                    quote.getHigh(), quote.getLow(), quote.getClose(), quote.getAmount(), quote.getAdjFactor());
             if (kline != null) {
                 result.add(kline);
             }
@@ -121,7 +121,7 @@ public class KlineProvider {
     }
 
     private StockDailyKline sanitize(String symbol, String tradeDate, BigDecimal open, BigDecimal high,
-                                     BigDecimal low, BigDecimal close, BigDecimal amount) {
+                                     BigDecimal low, BigDecimal close, BigDecimal amount, BigDecimal adjFactor) {
         if (symbol == null || tradeDate == null || !isPositive(close)) {
             return null;
         }
@@ -141,10 +141,20 @@ public class KlineProvider {
         StockDailyKline kline = new StockDailyKline();
         kline.setSymbol(symbol);
         kline.setTradeDate(tradeDate);
-        kline.setOpen(fixedOpen);
-        kline.setHigh(fixedHigh);
-        kline.setLow(fixedLow);
-        kline.setClose(close);
+        if (isPositive(adjFactor)) {
+            // 除权/份额折算越过日：折算日之前的行按比例缩放，序列才连续到今天
+            kline.setOpen(fixedOpen.multiply(adjFactor));
+            kline.setHigh(fixedHigh.multiply(adjFactor));
+            kline.setLow(fixedLow.multiply(adjFactor));
+            kline.setClose(close.multiply(adjFactor));
+            kline.setAdjFactor(adjFactor);
+        } else {
+            kline.setOpen(fixedOpen);
+            kline.setHigh(fixedHigh);
+            kline.setLow(fixedLow);
+            kline.setClose(close);
+            kline.setAdjFactor(BigDecimal.ONE);
+        }
         kline.setAmount(amount);
         return kline;
     }

@@ -112,4 +112,33 @@ class KlineProviderTest {
         assertTrue(provider.ascending("").isEmpty());
         assertTrue(provider.ascending(null).isEmpty());
     }
+
+    @Test
+    void etfAdjFactorRestoresPriceBeforeSplit() {
+        // 512480 折算日之前收盘 1.44，折算比例 0.5 → 还原价 0.72，与折算后同一尺度
+        EtfDailyQuotes before = etfQuote("2021-03-26", "1.44", "1.46", "1.42");
+        before.setAdjFactor(new BigDecimal("0.5"));
+        EtfDailyQuotes after = etfQuote("2021-03-29", "0.72", "0.73", "0.71");
+        after.setAdjFactor(BigDecimal.ONE);
+        when(etfDailyQuotesRepository.findTop250BySymbolOrderByTradeDateDesc("515180"))
+                .thenReturn(List.of(after, before));
+
+        List<StockDailyKline> klines = provider.ascending("515180");
+
+        assertEquals(2, klines.size());
+        assertEquals(0, new BigDecimal("0.72").compareTo(klines.get(0).getClose()));
+        assertEquals(0, new BigDecimal("0.72").compareTo(klines.get(1).getClose()));
+        assertEquals(0, new BigDecimal("0.73").compareTo(klines.get(1).getHigh()));
+    }
+
+    @Test
+    void missingAdjFactorTreatedAsOne() {
+        when(etfDailyQuotesRepository.findTop250BySymbolOrderByTradeDateDesc("515180"))
+                .thenReturn(List.of(etfQuote("2026-10-30", "1.383", "1.392", "1.362")));
+
+        StockDailyKline kline = provider.ascending("515180").get(0);
+
+        assertEquals(0, new BigDecimal("1.383").compareTo(kline.getClose()));
+        assertEquals(0, BigDecimal.ONE.compareTo(kline.getAdjFactor()));
+    }
 }

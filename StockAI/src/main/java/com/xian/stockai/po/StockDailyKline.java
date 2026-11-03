@@ -36,6 +36,13 @@ public class StockDailyKline {
     @Field(name = "amount")
     private BigDecimal amount;
 
+    /**
+     * 除权还原因子：还原价 = 原始价 × adjFactor。送转股日之前小于 1、之后为 1，
+     * 由 etf-service 的除权检测写入；缺失时按 1 处理。
+     */
+    @Field(name = "adj_factor")
+    private BigDecimal adjFactor;
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public String getSymbol() { return symbol; }
@@ -52,4 +59,6 @@ public class StockDailyKline {
     public void setClose(BigDecimal close) { this.close = close; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public BigDecimal getAdjFactor() { return adjFactor; }
+    public void setAdjFactor(BigDecimal adjFactor) { this.adjFactor = adjFactor; }
 }

@@ -51,6 +51,13 @@ public class EtfDailyQuotes {
     @Field(name = "data_source")
     private String dataSource;
 
+    /**
+     * 份额折算还原因子：还原价 = 原始价 × adjFactor。折算日之前小于 1、之后为 1，
+     * 由 etf-service 的折算检测写入；缺失时按 1 处理。
+     */
+    @Field(name = "adj_factor")
+    private BigDecimal adjFactor;
+
     @Field(name = "updated_at")
     @JSONField(format = "yyyy-MM-dd HH:mm:ss")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -150,5 +157,13 @@ public class EtfDailyQuotes {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public BigDecimal getAdjFactor() {
+        return adjFactor;
+    }
+
+    public void setAdjFactor(BigDecimal adjFactor) {
+        this.adjFactor = adjFactor;
     }
 }

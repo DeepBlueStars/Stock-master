@@ -103,6 +103,32 @@ class KlineBackfillService:
 
     # ---------- 标的全集 ----------
 
+    def focus_symbols(self, kind: str) -> List[str]:
+        """当日真正需要最新收盘价的标的：持仓 + 交易计划 + 自选股。
+
+        全市场 2440 只逐个请求要一个多小时，会跨过 17:30 的止盈止损判定时点；
+        而判定只发生在持仓上，所以每日增量只需要这一小撮，全量刷新交给周末。
+        """
+        found = set()
+        for coll_name in ("position", "trade_plans"):
+            try:
+                coll = self.mongo.db[coll_name]
+                found.update(
+                    d.get("symbol") for d in coll.find({}, {"symbol": 1}) if d.get("symbol")
+                )
+            except Exception as e:  # noqa: BLE001 集合不存在时忽略
+                logger.warning("读取 %s 中的代码失败，跳过: %s", coll_name, e)
+        try:
+            for doc in self.mongo.db["user_favorites"].find({}, {"favorites": 1}):
+                for fav in doc.get("favorites") or []:
+                    code = fav.get("stock_code") or fav.get("symbol")
+                    if code:
+                        found.add(code)
+        except Exception as e:  # noqa: BLE001 自选表缺失时不影响主流程
+            logger.warning("读取 user_favorites 失败，跳过: %s", e)
+        want_etf = kind == KIND_ETF
+        return sorted(s for s in found if s and is_etf_symbol(s) == want_etf)
+
     def symbols(self, kind: str, symbols: Optional[List[str]] = None) -> List[str]:
         if symbols:
             return list(symbols)

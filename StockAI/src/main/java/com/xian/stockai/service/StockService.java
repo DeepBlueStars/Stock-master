@@ -281,6 +281,16 @@ public class StockService {
     }
 
     /**
+     * 查询用户指定标的的持仓
+     * @param userId 用户ID
+     * @param symbol 股票代码
+     * @return 持仓，不存在时返回 null
+     */
+    public Position getPosition(String userId, String symbol) {
+        return positionRepository.findByUserIdAndSymbol(userId, symbol);
+    }
+
+    /**
      * 获取持仓股票列表
      * @param userId 用户ID
      * @return 持仓股票列表
