@@ -8,9 +8,11 @@
 #   ./deploy_linux.sh etf-service-docker.tar.gz /opt/etf-service
 #
 # 可选环境变量（有值时透传给容器）：
-#   MONGO_URL、MONGO_DB_NAME、TUSHARE_TOKEN、TZ、SCHEDULER_TIMEZONE
+#   MONGO_URL、MONGO_DB_NAME、MONGO_USER、MONGO_PASSWORD、MONGO_AUTH_SOURCE、
+#   TUSHARE_TOKEN、TZ、SCHEDULER_TIMEZONE
 # 若解压目录下存在 .env 文件，也会通过 --env-file 传给容器
 # 未设置 MONGO_URL 时：优先复用已运行的 MongoDB 容器，否则回退到宿主机 host.docker.internal
+# MongoDB 开了认证时必须同时给 MONGO_USER / MONGO_PASSWORD，否则自动拼出的 URL 无账号，容器能连通却没权限
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 TAR_FILE="$1"
@@ -109,32 +111,59 @@ env_file_has() {
 }
 
 # 自动确定 MongoDB 地址，避免容器内 localhost 指向容器自身
+# MongoDB 开了认证时，自动拼出来的 URL 必须带账号密码，否则容器能连通却没读写权限
+mongo_url_for() {
+    local host="$1"
+    local db="${MONGO_DB_NAME:-tradingagents}"
+    if [ -n "$MONGO_USER" ]; then
+        echo "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${host}:27017/${db}?authSource=${MONGO_AUTH_SOURCE:-admin}"
+    else
+        echo "mongodb://${host}:27017/${db}"
+    fi
+}
+
 NETWORK_ARGS=()
+
+# 先探测 MongoDB 容器所在的网络并始终加入：
+# 即使 MONGO_URL 来自 .env（可能是 mongodb://容器的名字:27017），也必须和 mongo 同网络，
+# 否则容器内的 DNS 解析会报 "Name or service not known"。
+MONGO_CONTAINER=$(docker ps --format '{{.Names}}' | grep -Ei 'mongo' | head -n1 || true)
+MONGO_NETWORK=""
+MONGO_IP=""
+if [ -n "$MONGO_CONTAINER" ]; then
+    MONGO_NETWORK=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$MONGO_CONTAINER" 2>/dev/null | awk '{print $1}')
+    MONGO_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$MONGO_CONTAINER" 2>/dev/null | awk '{print $1}')
+    if [ -n "$MONGO_NETWORK" ] && [ "$MONGO_NETWORK" != "bridge" ]; then
+        NETWORK_ARGS+=(--network "$MONGO_NETWORK")
+        echo "[信息] 检测到 MongoDB 容器 $MONGO_CONTAINER，加入网络 $MONGO_NETWORK"
+    fi
+fi
+
 if [ -z "$MONGO_URL" ]; then
     if env_file_has MONGO_URL; then
         echo "[信息] 使用 .env 中的 MONGO_URL"
     else
-        MONGO_CONTAINER=$(docker ps --format '{{.Names}}' | grep -Ei 'mongo' | head -n1 || true)
         if [ -n "$MONGO_CONTAINER" ]; then
-            MONGO_NETWORK=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$MONGO_CONTAINER" 2>/dev/null | awk '{print $1}')
-            MONGO_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$MONGO_CONTAINER" 2>/dev/null | awk '{print $1}')
             if [ -n "$MONGO_NETWORK" ] && [ "$MONGO_NETWORK" != "bridge" ]; then
-                MONGO_URL="mongodb://$MONGO_CONTAINER:27017/tradingagents"
-                NETWORK_ARGS+=(--network "$MONGO_NETWORK")
-                echo "[信息] 检测到 MongoDB 容器 $MONGO_CONTAINER，自动加入网络 $MONGO_NETWORK"
+                MONGO_URL="$(mongo_url_for "$MONGO_CONTAINER")"
+                echo "[信息] 使用 MongoDB 容器名 $MONGO_CONTAINER 连接"
             elif [ -n "$MONGO_IP" ]; then
-                MONGO_URL="mongodb://$MONGO_IP:27017/tradingagents"
+                MONGO_URL="$(mongo_url_for "$MONGO_IP")"
                 echo "[信息] 检测到 MongoDB 容器 $MONGO_CONTAINER（默认 bridge），使用容器 IP $MONGO_IP"
             else
-                MONGO_URL="mongodb://host.docker.internal:27017/tradingagents"
+                MONGO_URL="$(mongo_url_for host.docker.internal)"
                 NETWORK_ARGS+=(--add-host "host.docker.internal:host-gateway")
                 echo "[警告] 无法读取 MongoDB 容器地址，回退到 $MONGO_URL"
             fi
         else
-            MONGO_URL="mongodb://host.docker.internal:27017/tradingagents"
+            MONGO_URL="$(mongo_url_for host.docker.internal)"
             NETWORK_ARGS+=(--add-host "host.docker.internal:host-gateway")
             echo "[警告] 未设置 MONGO_URL，默认连接宿主机 MongoDB: $MONGO_URL"
             echo "        若 MongoDB 在其他机器，请先 export MONGO_URL='mongodb://<mongo-ip>:27017/tradingagents' 再重跑"
+        fi
+        if [ -z "$MONGO_USER" ]; then
+            echo "[警告] 没设置 MONGO_USER/MONGO_PASSWORD：若 MongoDB 开了认证，容器会连不上（ping 失败）。"
+            echo "        请 export MONGO_USER=xxx MONGO_PASSWORD=xxx MONGO_AUTH_SOURCE=admin 后重跑"
         fi
     fi
 fi

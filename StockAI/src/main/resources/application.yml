@@ -94,3 +94,32 @@ trade-plan:
   degraded-take-profit-rate: 0.10
   summary-retention-weeks: 12
   summary-cron: "0 0 8 ? * SAT"
+# 卖出纪律：L1 硬止损 / L2 移动止盈 / L4 分批止盈
+# 判定时点放在 17:30，等 etf-service 16:00~16:20 的日线任务先落库
+exit:
+  hard-stop-rate: 0.25
+  hard-stop-relax-atr-ratio: 0.04
+  hard-stop-relaxed-rate: 0.30
+  # ETF 按 60 日年化波动率分档：低波动收紧、高波动放宽
+  etf-hard-stop-tiers:
+    - max-volatility: 0.15
+      hard-stop-rate: 0.15
+    - max-volatility: 0.25
+      hard-stop-rate: 0.20
+    - max-volatility: null
+      hard-stop-rate: 0.25
+  # 换档滞回带宽：σ 要越过档位边界 2 个点才换档，否则在 15% 附近来回抖就会让止损线跳 5 个点
+  etf-hard-stop-hysteresis: 0.02
+  trailing-arm-return: 0.30
+  trailing-rate: 0.15
+  breakeven-return: 0.10
+  take-profit-1-return: 0.30
+  take-profit-1-fraction: 0.3333
+  take-profit-2-return: 0.60
+  take-profit-2-fraction: 0.3333
+  add-buffer-trade-days: 10
+  signal-cooldown-trade-days: 5
+  # 只落库不推送；需要飞书提醒时改成 true
+  notify-enabled: false
+  cron: "0 30 17 ? * MON-FRI"
+  default-user-id: "6928fca14f206ada1b7a9269"
