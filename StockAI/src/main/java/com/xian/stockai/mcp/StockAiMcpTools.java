@@ -199,11 +199,8 @@ public class StockAiMcpTools {
         if (position != null && position.getType() != null && !position.getType().isBlank()) {
             return position.getType();
         }
-        return isEtf(symbol) ? "ETF" : "股票";
-    }
-
-    private boolean isEtf(String symbol) {
-        return symbol.startsWith("1") || symbol.startsWith("5");
+        // 买入页的类型来自资产配置，没有「基金/ETF」这类选项；默认按股票落库
+        return "股票";
     }
 
     /**

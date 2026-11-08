@@ -1,38 +1,43 @@
 <template>
-  <div class="config-container">
-    <el-card class="config-card">
-      <template #header>
-        <div class="flex justify-between items-center">
-          <h2 class="text-xl font-bold">个人配置</h2>
-        </div>
-      </template>
-      
-      <el-form :model="userInfo" label-width="80px" class="mt-4">
+  <div class="page config-container">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">配置</h1>
+        <p class="page-sub">账户名、邮箱是只读的；现金可以随时改。</p>
+      </div>
+    </div>
+
+    <section class="paper config-paper">
+      <div class="pane-head">
+        <h2 class="pane-title">个人配置</h2>
+      </div>
+
+      <el-form :model="userInfo" label-width="88px" class="config-form">
         <el-form-item label="用户名">
           <el-input v-model="userInfo.username" disabled />
         </el-form-item>
-        
+
         <el-form-item label="邮箱">
           <el-input v-model="userInfo.email" disabled />
         </el-form-item>
-        
+
         <el-form-item label="现金" prop="cash">
-          <el-input-number 
-            v-model="userInfo.cash" 
-            :min="0" 
-            :precision="2" 
-            :step="0.01" 
+          <el-input-number
+            v-model="userInfo.cash"
+            :min="0"
+            :precision="2"
+            :step="0.01"
             class="w-full"
           />
         </el-form-item>
-        
-        <el-form-item>
+
+        <el-form-item class="config-submit">
           <el-button type="primary" @click="updateCash" :loading="updatingCash">
             保存修改
           </el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </section>
   </div>
 </template>
 
@@ -120,12 +125,42 @@ onMounted(() => {
 
 <style scoped>
 .config-container {
-  padding: 20px;
-  max-width: 800px;
-  margin: 0 auto;
+  max-width: 760px;
+  margin: 0;
 }
 
-.config-card {
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+.config-paper {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet);
+  overflow: hidden;
+}
+
+.config-form {
+  padding: 6px 22px 22px;
+}
+
+.config-form :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.config-form :deep(.el-form-item__label) {
+  font-size: var(--t-12);
+  color: var(--ink-3);
+}
+
+.config-submit {
+  margin-top: 22px;
+  margin-bottom: 0 !important;
+}
+
+.config-form :deep(.el-input.is-disabled .el-input__wrapper) {
+  background: var(--surface-sunken);
+  box-shadow: 0 0 0 1px var(--rule) inset;
+}
+
+.config-form :deep(.el-input.is-disabled .el-input__inner) {
+  color: var(--ink-3);
 }
 </style>

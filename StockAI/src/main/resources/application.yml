@@ -40,7 +40,7 @@ logging:
 
 # 止盈止损监控定时任务 cron（工作日收盘后 15:30）
 monitor:
-  cron: "0 30 15 * * ?"
+  cron: "0 30 18 * * ?"
 
 # 飞书自定义机器人推送（默认关闭）
 feishu:
@@ -50,7 +50,7 @@ feishu:
 
 # 市场温度计：收盘后判定定时任务与量化阈值
 market-regime:
-  cron: "0 30 15 * * ?"
+  cron: "0 30 16 ? * MON-FRI"
   benchmark-index: "sh000300"
   thresholds:
     volatility-high: 0.30

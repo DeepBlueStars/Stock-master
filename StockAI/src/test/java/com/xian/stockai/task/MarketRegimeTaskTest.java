@@ -29,11 +29,12 @@ class MarketRegimeTaskTest {
     }
 
     @Test
-    void evaluateDailyUsesMonitorCron() throws Exception {
+    void evaluateDailyRunsAfterIndexSync() throws Exception {
         Method method = MarketRegimeTask.class.getMethod("evaluateDaily");
         Scheduled scheduled = method.getAnnotation(Scheduled.class);
 
         assertNotNull(scheduled);
-        assertEquals("${market-regime.cron:0 30 15 * * ?}", scheduled.cron());
+        // 16:30 必须晚于 etf-service 的指数同步（15:30），否则判定吃到的是旧日线
+        assertEquals("${market-regime.cron:0 30 16 ? * MON-FRI}", scheduled.cron());
     }
 }

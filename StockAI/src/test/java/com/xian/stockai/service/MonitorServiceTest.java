@@ -221,7 +221,7 @@ class MonitorServiceTest {
         EtfDailyQuotes etf = new EtfDailyQuotes();
         etf.setSymbol("510300");
         etf.setClose(new BigDecimal("4.50"));
-        when(etfDailyQuotesRepository.findTopBySymbolOrderByUpdatedAtDesc("510300")).thenReturn(etf);
+        when(etfDailyQuotesRepository.findTopBySymbolOrderByTradeDateDescUpdatedAtDesc("510300")).thenReturn(etf);
         when(positionRepository.findByUserIdAndSymbol(USER_ID, "510300")).thenReturn(position(new BigDecimal("4.00")));
 
         monitorService.checkRule(rule);

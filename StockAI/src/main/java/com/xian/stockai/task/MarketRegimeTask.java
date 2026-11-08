@@ -12,9 +12,9 @@ import org.springframework.stereotype.Component;
 public class MarketRegimeTask {
     private final MarketRegimeService marketRegimeService;
 
-    @Scheduled(cron = "${market-regime.cron:0 30 15 * * ?}")
+    @Scheduled(cron = "${market-regime.cron:0 30 16 ? * MON-FRI}")
     public void evaluateDaily() {
-        log.info("开始市场温度计收盘判定");
+        log.info("开始市场温度计收盘判定（16:30，等指数日线落库之后）");
         marketRegimeService.evaluateAndSave();
         log.info("市场温度计收盘判定结束");
     }

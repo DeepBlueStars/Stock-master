@@ -459,11 +459,17 @@ public class ExitEvaluationService {
         return crossed ? raw : current;
     }
 
-    BigDecimal resolveHardStopRate(Position position, PositionExitPolicy policy,
-                                   List<StockDailyKline> klines, StockDailyKline last) {
-        boolean etf = Boolean.TRUE.equals(policy.getEtf()) || KlineProvider.isEtf(position.getSymbol());
+    /**
+     * 当前该用哪一档硬止损。policy 可以为空（还没判定过的持仓），此时按最新波动率现算，
+     * 不落库、也不创建策略——「今日决策」页要能看，但不能因为有人刷新页面就写库。
+     */
+    public BigDecimal resolveHardStopRate(Position position, PositionExitPolicy policy,
+                                          List<StockDailyKline> klines, StockDailyKline last) {
+        boolean etf = (policy != null && Boolean.TRUE.equals(policy.getEtf()))
+                || KlineProvider.isEtf(position.getSymbol());
         if (etf) {
-            return resolveEtfHardStopRate(policy.getHardStopRate(), annualizedVolatility(klines, 60));
+            BigDecimal current = policy == null ? null : policy.getHardStopRate();
+            return resolveEtfHardStopRate(current, annualizedVolatility(klines, 60));
         }
         BigDecimal atr = indicatorCalculator.atr(klines, 14);
         BigDecimal close = last.getClose();

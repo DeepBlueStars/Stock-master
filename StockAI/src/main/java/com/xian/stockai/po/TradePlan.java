@@ -201,6 +201,20 @@ public class TradePlan implements Serializable {
         @Field(name = "amount")
         private BigDecimal amount;
 
+        /**
+         * 是否已买入（用户手动确认，系统不猜）
+         */
+        @Field(name = "bought")
+        private Boolean bought;
+
+        /**
+         * 确认买入的时间
+         */
+        @Field(name = "bought_at")
+        @JSONField(format = "yyyy-MM-dd HH:mm:ss")
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+        private LocalDateTime boughtAt;
+
         public TradePlanBatch() {
         }
 
@@ -214,6 +228,10 @@ public class TradePlan implements Serializable {
         public void setRatio(BigDecimal ratio) { this.ratio = ratio; }
         public BigDecimal getPrice() { return price; }
         public void setPrice(BigDecimal price) { this.price = price; }
+        public Boolean getBought() { return bought; }
+        public void setBought(Boolean bought) { this.bought = bought; }
+        public LocalDateTime getBoughtAt() { return boughtAt; }
+        public void setBoughtAt(LocalDateTime boughtAt) { this.boughtAt = boughtAt; }
         public BigDecimal getAmount() { return amount; }
         public void setAmount(BigDecimal amount) { this.amount = amount; }
     }

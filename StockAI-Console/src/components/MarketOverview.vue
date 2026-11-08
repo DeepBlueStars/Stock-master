@@ -202,7 +202,7 @@ onMounted(refreshAll)
 </script>
 
 <template>
-  <div class="market-page">
+  <div class="page market-page">
     <div class="page-head">
       <div class="page-title-group">
         <h2 class="page-title">市场</h2>
@@ -532,27 +532,38 @@ onMounted(refreshAll)
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet);
+  overflow: hidden;
 }
 
 .summary-card {
-  padding: 14px 16px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  padding: 16px 20px 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   min-width: 0;
 }
 
+.summary-card + .summary-card {
+  border-left: 1px solid var(--rule);
+}
+
 .summary-label {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
 }
 
 .summary-value {
-  margin-top: 6px;
-  font-size: 22px;
-  font-weight: 700;
+  margin-top: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -562,7 +573,7 @@ onMounted(refreshAll)
 .summary-extra {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--ink-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -169,7 +169,7 @@ public class MonitorService {
             return null;
         }
         if (symbol.startsWith("1") || symbol.startsWith("5")) {
-            EtfDailyQuotes etf = etfDailyQuotesRepository.findTopBySymbolOrderByUpdatedAtDesc(symbol);
+            EtfDailyQuotes etf = etfDailyQuotesRepository.findTopBySymbolOrderByTradeDateDescUpdatedAtDesc(symbol);
             return etf == null ? null : etf.getClose();
         }
         MarketQuotes quotes = marketQuotesRepository.findByCode(symbol);

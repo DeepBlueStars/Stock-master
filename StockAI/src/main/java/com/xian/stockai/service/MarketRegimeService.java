@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +31,8 @@ import java.util.List;
 public class MarketRegimeService {
 
     private static final int MA250_WINDOW = 250;
+    /** 容器默认时区可能是 UTC，判定日期一律按北京时间取。 */
+    private static final ZoneId ZONE_SHANGHAI = ZoneId.of("Asia/Shanghai");
     private static final int MAX_HISTORY_LIMIT = 200;
 
     private final IndexDailyQuotesRepository indexDailyQuotesRepository;
@@ -78,6 +81,8 @@ public class MarketRegimeService {
         ind.setLatestClose(asc.get(asc.size() - 1).getClose());
         ind.setVolumeRatio(volumeRatio(asc));
         ind.setVolatility(volatility(asc));
+        ind.setSourceTradeDate(asc.get(asc.size() - 1).getTradeDate());
+        ind.setSourceTradeDate(asc.get(asc.size() - 1).getTradeDate());
 
         IndexValuation val = indexValuationRepository.findTopByIndexCodeOrderByTradeDateDesc(indexCode);
         if (val != null) {
@@ -117,7 +122,19 @@ public class MarketRegimeService {
         if (ind == null) {
             return Result.fail("基准指数数据不足，无法判定");
         }
-        String regime = RegimeRule.determineRegime(ind, volatilityHigh, valuationHigh);
+        // 判定排在指数同步（15:30）之后，但如果同步当天失败，这里拿到的还是旧日线。
+        // 宁可当天没有结论，也不要写一条「用 T-3 的数据算出来的 T 日结论」。
+        String today = LocalDate.now(ZONE_SHANGHAI).toString();
+        if (!today.equals(ind.getSourceTradeDate())) {
+            log.warn("基准指数 {} 最新日线是 {}，不是今天 {}，跳过本次判定",
+                    benchmarkIndex, ind.getSourceTradeDate(), today);
+            return Result.fail("基准指数日线未更新到当天（最新 "
+                    + ind.getSourceTradeDate() + "），本次不写记录");
+        }
+        // 迟滞：贴着年线时维持上一状态，避免在年线附近来回打脸
+        MarketRegimeRecord lastRecord = marketRegimeRecordRepository.findTopByOrderByDateDesc();
+        String previousRegime = lastRecord == null ? null : lastRecord.getRegime();
+        String regime = RegimeRule.determineRegime(ind, volatilityHigh, valuationHigh, previousRegime);
         String advice = RegimeRule.mapPositionAdvice(regime);
 
         String report;
@@ -129,7 +146,7 @@ public class MarketRegimeService {
         }
 
         MarketRegimeRecord record = new MarketRegimeRecord();
-        String date = LocalDate.now().toString();
+        String date = today;
         MarketRegimeRecord existing = marketRegimeRecordRepository.findByDate(date);
         if (existing != null) {
             record.setId(existing.getId());
@@ -139,7 +156,7 @@ public class MarketRegimeService {
         record.setPositionAdvice(advice);
         record.setIndicators(ind);
         record.setReport(report);
-        record.setCreatedAt(LocalDateTime.now());
+        record.setCreatedAt(LocalDateTime.now(ZONE_SHANGHAI));
         marketRegimeRecordRepository.save(record);
         pushFeishu(record);
         return Result.success(record);

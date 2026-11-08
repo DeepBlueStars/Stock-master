@@ -121,7 +121,8 @@ public class TradePlanCalculator {
             plan.setBuyBasis(String.format("ATR 占现价 %s%%，中波动，建议分 %d 批买入",
                     percent(atrRatio), ratios.length));
         } else {
-            ratios = new BigDecimal[]{};
+            // 一次性买入也要落一条批次：界面上才有「触发价 + 已买入」可勾，不然只剩个空表
+            ratios = new BigDecimal[]{BigDecimal.ONE};
             plan.setBuyMode(TradePlan.BUY_MODE_LUMP_SUM);
             plan.setBuyBasis(String.format("ATR 占现价 %s%%，低波动，建议一次性买入", percent(atrRatio)));
         }

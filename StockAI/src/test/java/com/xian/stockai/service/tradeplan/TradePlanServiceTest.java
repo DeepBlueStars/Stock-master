@@ -29,6 +29,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -118,6 +119,81 @@ class TradePlanServiceTest {
         verify(tradePlanRepository).save(captor.capture());
         assertTrue(Boolean.TRUE.equals(captor.getValue().getMonitorLinked()));
         assertEquals("p1", captor.getValue().getId());
+    }
+
+    @Test
+    void refreshPlanCarriesOverBoughtMarks() {
+        when(positionRepository.findByUserIdAndSymbol("u1", "600519")).thenReturn(position("600519", 100, "10.00"));
+        when(klineProvider.ascending("600519")).thenReturn(new ArrayList<>());
+        when(monitorService.getCurrentPrice("600519")).thenReturn(new BigDecimal("10.00"));
+
+        TradePlan.TradePlanBatch oldFirst = new TradePlan.TradePlanBatch(
+                new BigDecimal("50"), new BigDecimal("10.00"), new BigDecimal("5000"));
+        oldFirst.setBought(true);
+        oldFirst.setBoughtAt(java.time.LocalDateTime.of(2026, 11, 6, 14, 30));
+        TradePlan.TradePlanBatch oldSecond = new TradePlan.TradePlanBatch(
+                new BigDecimal("50"), new BigDecimal("9.00"), new BigDecimal("5000"));
+        TradePlan existing = new TradePlan();
+        existing.setBuyBatches(new ArrayList<>(List.of(oldFirst, oldSecond)));
+        when(tradePlanRepository.findByUserIdAndSymbol("u1", "600519")).thenReturn(Optional.of(existing));
+
+        TradePlan generated = new TradePlan();
+        generated.setBuyBatches(new ArrayList<>(List.of(
+                new TradePlan.TradePlanBatch(new BigDecimal("50"), new BigDecimal("10.10"), new BigDecimal("5000")),
+                new TradePlan.TradePlanBatch(new BigDecimal("50"), new BigDecimal("9.10"), new BigDecimal("5000")))));
+        when(calculator.calculate(any(), any(), any(), any(), any())).thenReturn(generated);
+
+        service.refreshPlan("u1", "600519");
+
+        assertTrue(Boolean.TRUE.equals(generated.getBuyBatches().get(0).getBought()), "第一批的已买入标记应被保留");
+        assertEquals(java.time.LocalDateTime.of(2026, 11, 6, 14, 30),
+                generated.getBuyBatches().get(0).getBoughtAt());
+        assertTrue(!Boolean.TRUE.equals(generated.getBuyBatches().get(1).getBought()), "没买的批次不能被带成已买入");
+    }
+
+    @Test
+    void markBatchTogglesBoughtFlag() {
+        TradePlan plan = new TradePlan();
+        plan.setUserId("u1");
+        plan.setSymbol("600519");
+        plan.setBuyBatches(new ArrayList<>(List.of(
+                new TradePlan.TradePlanBatch(new BigDecimal("50"), new BigDecimal("10.00"), new BigDecimal("5000")),
+                new TradePlan.TradePlanBatch(new BigDecimal("50"), new BigDecimal("9.00"), new BigDecimal("5000")))));
+        when(tradePlanRepository.findByUserIdAndSymbol("u1", "600519")).thenReturn(Optional.of(plan));
+
+        Result<TradePlanRes> result = service.markBatch("u1", "600519", 1, true);
+
+        assertTrue(result.checkSuccess());
+        assertTrue(Boolean.TRUE.equals(plan.getBuyBatches().get(1).getBought()));
+        assertNotNull(plan.getBuyBatches().get(1).getBoughtAt());
+        verify(tradePlanRepository).save(plan);
+
+        service.markBatch("u1", "600519", 1, false);
+        assertTrue(!Boolean.TRUE.equals(plan.getBuyBatches().get(1).getBought()));
+        assertNull(plan.getBuyBatches().get(1).getBoughtAt());
+    }
+
+    @Test
+    void markBatchRejectsOutOfRangeIndex() {
+        TradePlan plan = new TradePlan();
+        plan.setBuyBatches(new ArrayList<>(List.of(
+                new TradePlan.TradePlanBatch(new BigDecimal("100"), new BigDecimal("10.00"), new BigDecimal("5000")))));
+        when(tradePlanRepository.findByUserIdAndSymbol("u1", "600519")).thenReturn(Optional.of(plan));
+
+        Result<TradePlanRes> result = service.markBatch("u1", "600519", 3, true);
+
+        assertTrue(!result.checkSuccess());
+        verify(tradePlanRepository, times(0)).save(any());
+    }
+
+    @Test
+    void markBatchFailsWhenPlanMissing() {
+        when(tradePlanRepository.findByUserIdAndSymbol("u1", "600519")).thenReturn(Optional.empty());
+
+        Result<TradePlanRes> result = service.markBatch("u1", "600519", 0, true);
+
+        assertTrue(!result.checkSuccess());
+        assertTrue(result.getMessage().contains("不存在"));
     }
 
     @Test

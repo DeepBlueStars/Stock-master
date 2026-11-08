@@ -96,7 +96,9 @@ class TradePlanCalculatorTest {
                 klines("10.06", "9.94", "10.00", 20), new BigDecimal("10.00"));
 
         assertEquals(TradePlan.BUY_MODE_LUMP_SUM, plan.getBuyMode());
-        assertTrue(plan.getBuyBatches().isEmpty());
+        assertEquals(1, plan.getBuyBatches().size());
+        assertEquals(0, BigDecimal.ONE.compareTo(plan.getBuyBatches().get(0).getRatio()));
+        assertEquals(0, new BigDecimal("10.00").compareTo(plan.getBuyBatches().get(0).getPrice()));
         assertEquals(TradePlan.CASH_BASIS_UNKNOWN, plan.getCashBasis());
     }
 

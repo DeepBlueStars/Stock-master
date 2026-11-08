@@ -4,7 +4,9 @@ import com.xian.stockai.po.ExitEvalRun;
 import com.xian.stockai.po.ExitSignal;
 import com.xian.stockai.po.PositionExitPolicy;
 import com.xian.stockai.service.exit.ExitEvaluationService;
+import com.xian.stockai.service.exit.ExitOverviewService;
 import com.xian.stockai.vo.ExitEvaluationRes;
+import com.xian.stockai.vo.ExitOverviewRes;
 import com.xian.stockai.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +30,17 @@ import java.util.Map;
 public class ExitController {
 
     private final ExitEvaluationService exitEvaluationService;
+
+    private final ExitOverviewService exitOverviewService;
+
+    /**
+     * 「今日决策」一屏所需的数据：持仓纪律线 + 待处理信号 + 上次判定信息。
+     * 只读，不会触发判定。
+     */
+    @GetMapping("/overview")
+    public Result<ExitOverviewRes> overview(@RequestParam String userId) {
+        return exitOverviewService.overview(userId);
+    }
 
     /**
      * 立刻跑一次判定（不传 symbol 则跑全部持仓）

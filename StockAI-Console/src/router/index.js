@@ -3,7 +3,7 @@ import AssetConfig from '../components/AssetConfig/AssetConfig.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Config from '../components/Config.vue'
 import MarketOverview from '../components/MarketOverview.vue'
-import TradePlan from '../components/TradePlan.vue'
+import ExitDecision from '../components/ExitDecision.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -38,8 +38,12 @@ const router = createRouter({
     },
     {
       path: '/trade-plan',
-      name: '交易计划',
-      component: TradePlan
+      redirect: '/decide'
+    },
+    {
+      path: '/decide',
+      name: '决策台',
+      component: ExitDecision
     }
   ]
 })

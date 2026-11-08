@@ -303,7 +303,7 @@ public class StockService {
             if (position.getTotalQuantity() > 0) {
                 PositionRes positionRes = new PositionRes();
                 if (position.getSymbol().startsWith("1") || position.getSymbol().startsWith("5")) {
-                    EtfDailyQuotes etfDailyQuotes = etfDailyQuotesRepository.findTopBySymbolOrderByUpdatedAtDesc(position.getSymbol());
+                    EtfDailyQuotes etfDailyQuotes = etfDailyQuotesRepository.findTopBySymbolOrderByTradeDateDescUpdatedAtDesc(position.getSymbol());
                     positionRes = PositionRes.fromPosition(position, etfDailyQuotes);
                 } else {
                     MarketQuotes marketQuotes = marketQuotesRepository.findByCode(position.getSymbol());
@@ -350,7 +350,7 @@ public class StockService {
             if (position.getTotalQuantity() > 0) {
                 PositionRes positionRes = new PositionRes();
                 if (position.getSymbol().startsWith("1") || position.getSymbol().startsWith("5")) {
-                    EtfDailyQuotes etfDailyQuotes = etfDailyQuotesRepository.findTopBySymbolOrderByUpdatedAtDesc(position.getSymbol());
+                    EtfDailyQuotes etfDailyQuotes = etfDailyQuotesRepository.findTopBySymbolOrderByTradeDateDescUpdatedAtDesc(position.getSymbol());
                     positionRes = PositionRes.fromPosition(position, etfDailyQuotes);
                 } else {
                     MarketQuotes marketQuotes = marketQuotesRepository.findByCode(position.getSymbol());
@@ -443,7 +443,7 @@ public class StockService {
                 // 区分ETF和普通股票
                 if (position.getSymbol().startsWith("1") || position.getSymbol().startsWith("5")) {
                     // ETF查询etfDailyQuotesRepository
-                    EtfDailyQuotes etfDailyQuotes = etfDailyQuotesRepository.findTopBySymbolOrderByUpdatedAtDesc(position.getSymbol());
+                    EtfDailyQuotes etfDailyQuotes = etfDailyQuotesRepository.findTopBySymbolOrderByTradeDateDescUpdatedAtDesc(position.getSymbol());
                     if (etfDailyQuotes != null) {
                         currentPrice = etfDailyQuotes.getClose();
                     }
@@ -527,73 +527,133 @@ public class StockService {
                 return Result.fail("资产分类配置中未配置资产");
             }
             
-            // 5. 获取持仓数量大于0的有效持仓记录
+            // 5. 获取持仓记录；没有持仓也要返回配置类别，
+            //    配置结构 / 策略建议的类别轴必须来自同一份配置
             List<Position> positions = positionRepository.findByUserId(userId);
-            if (positions == null || positions.isEmpty()) {
-                return Result.success(new java.util.ArrayList<>());
+            java.util.Set<String> configuredNames = new java.util.LinkedHashSet<>();
+            for (com.alibaba.fastjson2.JSONObject asset : assets) {
+                String name = asset.getString("name");
+                if (name != null && !name.isBlank()) {
+                    configuredNames.add(name);
+                }
             }
-            
-            // 6. 按type分组计算每个分类的总持仓金额
+
+            // 6. 按「配置类别」汇总持仓金额
             java.util.Map<String, BigDecimal> categoryAmountMap = new java.util.HashMap<>();
-            
-            for (Position position : positions) {
-                if (position.getTotalQuantity() <= 0) {
-                    continue;
-                }
-                
-                // 获取当前价格
-                BigDecimal currentPrice = BigDecimal.ZERO;
-                if (position.getSymbol().startsWith("1") || position.getSymbol().startsWith("5")) {
-                    EtfDailyQuotes etfDailyQuotes = etfDailyQuotesRepository.findTopBySymbolOrderByUpdatedAtDesc(position.getSymbol());
-                    if (etfDailyQuotes != null) {
-                        currentPrice = etfDailyQuotes.getClose();
+
+            if (positions != null) {
+                for (Position position : positions) {
+                    if (position.getTotalQuantity() <= 0) {
+                        continue;
                     }
-                } else {
-                    MarketQuotes marketQuotes = marketQuotesRepository.findByCode(position.getSymbol());
-                    if (marketQuotes != null) {
-                        currentPrice = marketQuotes.getClose();
+
+                    // 获取当前价格
+                    BigDecimal currentPrice = BigDecimal.ZERO;
+                    if (position.getSymbol().startsWith("1") || position.getSymbol().startsWith("5")) {
+                        EtfDailyQuotes etfDailyQuotes = etfDailyQuotesRepository.findTopBySymbolOrderByTradeDateDescUpdatedAtDesc(position.getSymbol());
+                        if (etfDailyQuotes != null) {
+                            currentPrice = etfDailyQuotes.getClose();
+                        }
+                    } else {
+                        MarketQuotes marketQuotes = marketQuotesRepository.findByCode(position.getSymbol());
+                        if (marketQuotes != null) {
+                            currentPrice = marketQuotes.getClose();
+                        }
                     }
+
+                    if (currentPrice.compareTo(BigDecimal.ZERO) <= 0) {
+                        continue;
+                    }
+
+                    // 计算持仓金额
+                    BigDecimal positionAmount = currentPrice.multiply(BigDecimal.valueOf(position.getTotalQuantity()));
+
+                    // 买入时选的 type 就是配置类别；老数据里的「基金/ETF」按代码归到配置类别
+                    String category = resolvePositionCategory(position.getType(), position.getSymbol(), configuredNames);
+                    if (category == null) {
+                        continue;
+                    }
+                    categoryAmountMap.merge(category, positionAmount, BigDecimal::add);
                 }
-                
-                if (currentPrice.compareTo(BigDecimal.ZERO) <= 0) {
-                    continue;
-                }
-                
-                // 计算持仓金额
-                BigDecimal positionAmount = currentPrice.multiply(BigDecimal.valueOf(position.getTotalQuantity()));
-                
-                // 根据position.type和assets列表中的name属性对应
-                String type = position.getType();
-                categoryAmountMap.put(type, categoryAmountMap.getOrDefault(type, BigDecimal.ZERO).add(positionAmount));
             }
-            
-            // 7. 组织返回结果
+
+            // 7. 只返回配置里的类别：左侧滑杆、右侧结构、策略建议共用这一套口径
             List<AssetCategoryPositionRes> result = new java.util.ArrayList<>();
             for (com.alibaba.fastjson2.JSONObject asset : assets) {
-                String type = asset.getString("name");
-                BigDecimal amount = categoryAmountMap.getOrDefault(type, BigDecimal.ZERO);
-                
+                String name = asset.getString("name");
+                BigDecimal amount = categoryAmountMap.getOrDefault(name, BigDecimal.ZERO);
+
                 // 如果是现金类，从users集合中的cash属性获取
-                if ("现金".equals(type)) {
+                if ("现金".equals(name)) {
                     Optional<Users> userOpt = usersRepository.findById(userId);
                     if (userOpt.isPresent() && userOpt.get().getCash() != null) {
                         amount = userOpt.get().getCash();
                     }
                 }
-                
+
                 AssetCategoryPositionRes res = new AssetCategoryPositionRes();
-                res.setCategoryName(type);
+                res.setCategoryName(name);
                 res.setPositionAmount(amount);
-                res.setType(type);
+                res.setType(asset.getString("type"));
                 res.setColor(asset.getString("color"));
-                
+
                 result.add(res);
             }
-            
+
             return Result.success(result);
         } catch (Exception e) {
             log.error("获取用户{}资产配置分类持仓金额失败: {}", userId, e.getMessage(), e);
             return Result.fail("获取资产配置分类持仓金额失败");
         }
+    }
+
+    /**
+     * 把持仓落到配置类别上。买入时选的 type 就是配置类别，优先直接用；
+     * 老数据里的「基金」「ETF」或空值按代码前缀推断，再并入配置类别：
+     * 配置里没有「基金」桶时并入「股票」（同属权益仓），保证页面类别和配置完全一致。
+     */
+    static String resolvePositionCategory(String positionType, String symbol, java.util.Set<String> configuredNames) {
+        if (configuredNames == null || configuredNames.isEmpty()) {
+            return null;
+        }
+        if (positionType != null && configuredNames.contains(positionType.trim())) {
+            return positionType.trim();
+        }
+        String inferred = resolveAssetCategory(symbol);
+        if (configuredNames.contains(inferred)) {
+            return inferred;
+        }
+        if ("基金".equals(inferred) && configuredNames.contains("股票")) {
+            return "股票";
+        }
+        if (configuredNames.contains("股票")) {
+            return "股票";
+        }
+        return configuredNames.iterator().next();
+    }
+
+    /**
+     * 把持仓代码归到资产类别。规则按代码前缀，不依赖 position.type：
+     * 黄金 ETF（518xxx）、债券 ETF（511xxx、少数 159xxx）、其余 ETF/LOF（1/5 开头）算基金，
+     * 剩下的当股票。分不清的一律按股票处理，宁可少分一类也不要把钱漏掉。
+     */
+    static String resolveAssetCategory(String symbol) {
+        if (symbol == null) {
+            return "股票";
+        }
+        String code = symbol.trim();
+        if (code.isEmpty()) {
+            return "股票";
+        }
+        if (code.startsWith("518") || code.startsWith("159934")) {
+            return "黄金";
+        }
+        if (code.startsWith("511") || code.startsWith("159926") || code.startsWith("159972")) {
+            return "债券";
+        }
+        if (code.startsWith("1") || code.startsWith("5")) {
+            return "基金";
+        }
+        return "股票";
     }
 }

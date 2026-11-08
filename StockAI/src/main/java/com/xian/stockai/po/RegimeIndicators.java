@@ -12,6 +12,8 @@ public class RegimeIndicators {
     private BigDecimal pePercentile;
     private BigDecimal pbPercentile;
     private String benchmarkIndex;
+    /** 这次判定实际用到的最后一根日线日期，用来核对「判定是否吃到了当天数据」。 */
+    private String sourceTradeDate;
 
     public BigDecimal getMa20() { return ma20; }
     public void setMa20(BigDecimal ma20) { this.ma20 = ma20; }
@@ -31,4 +33,6 @@ public class RegimeIndicators {
     public void setPbPercentile(BigDecimal pbPercentile) { this.pbPercentile = pbPercentile; }
     public String getBenchmarkIndex() { return benchmarkIndex; }
     public void setBenchmarkIndex(String benchmarkIndex) { this.benchmarkIndex = benchmarkIndex; }
+    public String getSourceTradeDate() { return sourceTradeDate; }
+    public void setSourceTradeDate(String sourceTradeDate) { this.sourceTradeDate = sourceTradeDate; }
 }

@@ -1,150 +1,106 @@
 <template>
-  <el-card class="ratio-adjuster">
-    <template #header>
-      <div class="card-header">
-        <span>资产比例调整</span>
-        <div class="total-ratio">
-          <span class="label">总比例：</span>
-          <span 
-            class="value" 
-            :class="{ 'invalid': totalRatio !== 100 }"
-            :title="totalRatio !== 100 ? '总比例必须为100%，请调整资产比例' : ''"
-          >
-            {{ totalRatio }}%
-          </span>
-          <el-tooltip 
-            v-if="totalRatio !== 100" 
-            content="总比例必须为100%，请调整资产比例" 
-            placement="top"
-            :effect="'warning'"
-          >
-            <el-icon-warning class="warning-icon"></el-icon-warning>
-          </el-tooltip>
-        </div>
+  <div class="adjuster">
+    <div class="pane-head">
+      <h2 class="pane-title">资产比例</h2>
+      <div class="total" :class="{ 'is-off': totalRatio !== 100 }">
+        <span class="total-num num">{{ formatRatio(totalRatio) }}</span>
+        <span class="total-pct">%</span>
+        <el-tooltip
+          v-if="totalRatio !== 100"
+          content="各资产比例相加必须正好 100%"
+          placement="top"
+        >
+          <el-icon class="warn"><ElIconWarning /></el-icon>
+        </el-tooltip>
       </div>
-    </template>
+    </div>
 
-    <div class="ratio-adjuster-list">
-      <div 
-        v-for="(asset, index) in assets" 
-        :key="asset.id" 
-        class="ratio-adjuster-item"
-      >
-        <div class="asset-info">
-          <div class="asset-color-indicator" :style="{ backgroundColor: asset.color }"></div>
-          <div class="asset-name">{{ asset.name }}</div>
-          <div class="asset-type">{{ getAssetTypeLabel(asset.type) }}</div>
-        </div>
+    <div class="rows">
+      <div v-for="(asset, index) in localAssets" :key="asset.id" class="row">
+        <div class="row-main">
+          <span class="dot" :style="{ background: asset.color }" aria-hidden="true"></span>
+          <span class="row-name">{{ asset.name }}</span>
+          <span v-if="typeLabel(asset.type) !== asset.name" class="row-type">{{ typeLabel(asset.type) }}</span>
 
-        <div class="ratio-controls">
-          <el-slider
-            v-model="localAssets[index].ratio"
-            :min="0"
-            :max="100"
-            :step="0.1"
-            @change="handleRatioChange(index)"
-            :show-stops="true"
-            :marks="{
-              0: '0%',
-              50: '50%',
-              100: '100%'
-            }"
-          ></el-slider>
+          <div class="row-tools">
+            <button type="button" class="tool" title="编辑" aria-label="编辑资产" @click="handleEditAsset(asset)">
+              <el-icon><ElIconEdit /></el-icon>
+            </button>
+            <button
+              type="button"
+              class="tool tool--danger"
+              title="删除"
+              aria-label="删除资产"
+              :disabled="localAssets.length <= 1 || asset.type === 'cash'"
+              @click="handleDeleteAsset(index)"
+            >
+              <el-icon><ElIconDelete /></el-icon>
+            </button>
+          </div>
 
-          <div class="input-container">
-            <div class="asset-actions">
-              <el-button 
-                type="primary" 
-                size="small" 
-                :icon="ElIconEdit" 
-                @click="handleEditAsset(asset)"
-                circle
-              ></el-button>
-              <el-button 
-                type="danger" 
-                size="small" 
-                :icon="ElIconDelete" 
-                @click="handleDeleteAsset(index)"
-                circle
-                :disabled="assets.length <= 1 || asset.type === 'cash'"
-                :title="asset.type === 'cash' ? '现金资产不能删除' : ''"
-              ></el-button>
-            </div>
+          <div class="row-value">
             <el-input-number
               v-model="localAssets[index].ratio"
               :min="0"
               :max="100"
               :step="0.1"
-              @change="handleRatioChange(index)"
               :precision="1"
+              :controls="false"
               size="small"
-            >
-              <template #append>%</template>
-            </el-input-number>
+              @change="handleRatioChange(index)"
+            />
+            <span class="pct">%</span>
           </div>
         </div>
+
+        <el-slider
+          v-model="localAssets[index].ratio"
+          :min="0"
+          :max="100"
+          :step="0.1"
+          :show-tooltip="false"
+          class="row-slider"
+          @change="handleRatioChange(index)"
+        />
       </div>
 
-      <div v-if="assets.length === 0" class="empty-tip">
-        <el-empty description="暂无资产，请先添加资产类型"></el-empty>
-      </div>
-      
-      <!-- 添加资产按钮 -->
-      <div class="add-asset-button" @click="showAddDialog = true">
-        <el-icon-plus class="add-icon"></el-icon-plus>
-      </div>
+      <el-empty v-if="localAssets.length === 0" description="还没有资产类别" :image-size="64" />
 
-      <!-- 加载已保存的配置和保存配置按钮 -->
-      <div class="saved-configs-container">
-        <!-- 下拉框 -->
-        <div class="saved-configs-row">
-          <el-select 
-            v-model="selectedConfigId" 
-            placeholder="加载已保存的配置" 
-            size="large"
-            @change="handleLoadConfig"
-            class="saved-configs-select"
-          >
-            <el-option 
-              v-for="config in savedConfigs" 
-              :key="config.id" 
-              :label="`${config.name} (${new Date(config.createdAt).toLocaleString()})`" 
-              :value="config.id"
-            >
-              <div class="option-content">
-                <div class="option-name">{{ config.name }}</div>
-                <div class="option-desc">{{ config.description || '无描述' }}</div>
-                <div class="option-time">{{ new Date(config.createdAt).toLocaleString() }}</div>
-              </div>
-            </el-option>
-          </el-select>
-        </div>
-        
-        <!-- 按钮行 -->
-        <div class="saved-configs-buttons">
-          <el-button 
-            type="success" 
-            size="large" 
-            @click="handleUpdateConfig"
-            :disabled="localAssets.length === 0 || !selectedConfigId"
-            class="save-config-btn"
-          >
-            <el-icon-download></el-icon-download> 保存配置
-          </el-button>
-          <el-button 
-            type="primary" 
-            size="large" 
-            @click="handleSaveConfig"
-            :disabled="localAssets.length === 0"
-            class="new-config-btn"
-          >
-            <el-icon-download></el-icon-download> 新建配置
-          </el-button>
-        </div>
+      <button type="button" class="add-row" @click="showAddDialog = true">
+        <el-icon><ElIconPlus /></el-icon>
+        添加资产类别
+      </button>
+    </div>
+
+    <div class="foot">
+      <span class="foot-label">已保存的方案</span>
+      <el-select
+        v-model="selectedConfigId"
+        placeholder="载入一个方案"
+        size="default"
+        class="foot-select"
+        @change="handleLoadConfig"
+      >
+        <el-option
+          v-for="item in savedConfigs"
+          :key="item.id"
+          :label="`${item.name} (${new Date(item.createdAt).toLocaleString()})`"
+          :value="item.id"
+        >
+          <div class="option-content">
+            <div class="option-name">{{ item.name }}</div>
+            <div class="option-desc">{{ item.description || '无描述' }}</div>
+            <div class="option-time num">{{ new Date(item.createdAt).toLocaleString() }}</div>
+          </div>
+        </el-option>
+      </el-select>
+      <div class="foot-actions">
+        <el-button :disabled="!selectedConfigId" @click="handleUpdateConfig">更新此方案</el-button>
+        <el-button type="primary" :disabled="localAssets.length === 0" @click="handleSaveConfig">另存为新方案</el-button>
       </div>
     </div>
 
-    <!-- 添加/编辑资产对话框 -->
+    <!-- 添加/编辑资产 -->
     <el-dialog
       v-model="showAddDialog"
       :title="editingAsset ? '编辑资产' : '添加资产'"
@@ -152,12 +108,13 @@
     >
       <el-form :model="formData" :rules="rules" ref="formRef" label-width="80px">
         <el-form-item label="资产名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入资产名称"></el-input>
+          <el-input v-model="formData.name" placeholder="例如：美股"></el-input>
         </el-form-item>
 
         <el-form-item label="资产类型" prop="type">
           <el-select v-model="formData.type" placeholder="请选择资产类型">
             <el-option label="股票" value="stock"></el-option>
+            <el-option label="基金" value="fund"></el-option>
             <el-option label="债券" value="bond"></el-option>
             <el-option label="黄金" value="gold"></el-option>
             <el-option label="现金" value="cash"></el-option>
@@ -168,7 +125,7 @@
         <el-form-item label="资产颜色" prop="color">
           <div class="color-picker-container">
             <el-color-picker v-model="formData.color" show-alpha size="large"></el-color-picker>
-            <span class="color-value">{{ formData.color }}</span>
+            <span class="color-value num">{{ formData.color }}</span>
           </div>
         </el-form-item>
       </el-form>
@@ -181,21 +138,17 @@
       </template>
     </el-dialog>
 
-    <!-- 保存配置对话框 -->
-    <el-dialog
-      v-model="showSaveDialog"
-      title="保存配置方案"
-      width="400px"
-    >
+    <!-- 保存配置 -->
+    <el-dialog v-model="showSaveDialog" title="保存配置方案" width="400px">
       <el-form :model="saveForm" :rules="saveRules" ref="saveFormRef" label-width="80px">
         <el-form-item label="方案名称" prop="name">
-          <el-input v-model="saveForm.name" placeholder="请输入配置方案名称"></el-input>
+          <el-input v-model="saveForm.name" placeholder="例如：稳健 50/30"></el-input>
         </el-form-item>
 
-        <el-form-item label="方案描述" prop="description">
-          <el-input 
-            v-model="saveForm.description" 
-            placeholder="请输入配置方案描述"
+        <el-form-item label="方案说明" prop="description">
+          <el-input
+            v-model="saveForm.description"
+            placeholder="一句话说明这个方案的用途"
             type="textarea"
             :rows="3"
           ></el-input>
@@ -209,7 +162,7 @@
         </span>
       </template>
     </el-dialog>
-  </el-card>
+  </div>
 </template>
 
 <script setup>
@@ -291,7 +244,7 @@ const loadConfigs = async () => {
       try {
         const configJson = JSON.parse(currentConfig.config);
         // 更新本地资产列表
-        localAssets.value = JSON.parse(JSON.stringify(configJson.assets));
+        localAssets.value = normalizeAssetColors(JSON.parse(JSON.stringify(configJson.assets)));
         emitRatioChange();
       } catch (error) {
         console.error('解析当前配置失败:', error);
@@ -333,7 +286,7 @@ const handleLoadConfig = async (configId) => {
       try {
         const configJson = JSON.parse(config.config);
         // 更新本地资产列表
-        localAssets.value = JSON.parse(JSON.stringify(configJson.assets));
+        localAssets.value = normalizeAssetColors(JSON.parse(JSON.stringify(configJson.assets)));
         emitRatioChange();
         
         // 更新用户当前使用的配置
@@ -412,10 +365,34 @@ watch(
 // 资产类型标签映射
 const assetTypeLabels = {
   stock: '股票',
+  fund: '基金',
   bond: '债券',
   gold: '黄金',
   cash: '现金',
   other: '其他'
+};
+
+// 台账配色：与 tokens.css 的 --data-* 对齐
+const LEDGER_COLORS = ['#1f3b4d', '#4e7c8a', '#b0802c', '#8f8a7c', '#6b5f7a'];
+// 老配置里存的是 Element 默认色，按它原来的语义顺序换成台账色
+const LEGACY_COLORS = {
+  '#67c23a': 0,
+  '#409eff': 1,
+  '#e6a23c': 2,
+  '#f56c6c': 3
+};
+
+// 读盘时顺手把配色迁移到台账色，避免图表和 DESIGN.md 打架
+const normalizeAssetColors = (list) => {
+  if (!Array.isArray(list)) return [];
+  return list.map((asset, index) => {
+    const raw = String(asset.color || '').toLowerCase();
+    const legacyIndex = LEGACY_COLORS[raw];
+    const color = legacyIndex !== undefined
+      ? LEDGER_COLORS[legacyIndex]
+      : (asset.color || LEDGER_COLORS[index % LEDGER_COLORS.length]);
+    return { ...asset, color };
+  });
 };
 
 // 获取资产类型标签
@@ -513,6 +490,75 @@ const emitRatioChange = () => {
   emit('update:assets', [...localAssets.value]);
   emit('ratio-change', [...localAssets.value]);
 };
+
+/* 类别 → 资产类型，用来给策略建议里「配置还没写过」的类别补 type */
+const CATEGORY_TYPES = {
+  股票: 'stock',
+  基金: 'fund',
+  债券: 'bond',
+  黄金: 'gold',
+  现金: 'cash'
+};
+
+/**
+ * 按给定目标比例新建一份方案并切换过去（「策略建议」的落地入口）。
+ * 已有的同名类别沿用原来的颜色，缺的按台账色板补，保证和左边滑杆配色一致。
+ */
+const applyTargets = async (targets, name) => {
+  const next = [];
+  targets
+    .filter((item) => Number(item.target) > 0)
+    .forEach((item, index) => {
+      const existing = localAssets.value.find((asset) => asset.name === item.category);
+      next.push({
+        id: existing?.id ?? `auto-${Date.now()}-${index}`,
+        name: item.category,
+        type: existing?.type ?? CATEGORY_TYPES[item.category] ?? 'other',
+        ratio: Number(item.target),
+        color: existing?.color ?? LEDGER_COLORS[index % LEDGER_COLORS.length]
+      });
+    });
+
+  if (!next.length) {
+    return { ok: false, message: '目标比例为空' };
+  }
+
+  const sum = next.reduce((acc, asset) => acc + asset.ratio, 0);
+  if (Math.abs(sum - 100) > 0.05) {
+    return { ok: false, message: `目标合计 ${sum.toFixed(1)}%，不是 100%` };
+  }
+
+  localAssets.value = next;
+  emitRatioChange();
+
+  const configData = {
+    name,
+    description: '由「策略建议」按市场状态生成',
+    assets: next,
+    totalRatio: 100,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    id: Date.now().toString()
+  };
+
+  try {
+    const response = await axios.post(`${BASE_URL}/config/save`, {
+      userId: '6928fca14f206ada1b7a9269',
+      config: JSON.stringify(configData)
+    });
+    const res = response.data;
+    if (res.state !== 0) {
+      return { ok: false, message: res.message || '保存失败' };
+    }
+    loadConfigs();
+    return { ok: true };
+  } catch (error) {
+    console.error('保存配置失败:', error);
+    return { ok: false, message: '接口异常，保存失败' };
+  }
+};
+
+defineExpose({ applyTargets });
 
 // 编辑资产
 const handleEditAsset = (asset) => {
@@ -697,296 +743,315 @@ const resetSaveForm = () => {
     saveFormRef.value.resetFields();
   }
 };
+
+// 展示用的小工具
+const typeLabels = { stock: '股票', fund: '基金', bond: '债券', gold: '黄金', cash: '现金', other: '其他' };
+const typeLabel = (t) => typeLabels[t] || t;
+const formatRatio = (n) => {
+  const v = Number(n) || 0;
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+};
+
 </script>
 
 <style scoped>
-.ratio-adjuster {
-  height: 100%;
+.adjuster {
   display: flex;
   flex-direction: column;
+  min-height: 100%;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.pane-head {
+  align-items: baseline;
+  border-bottom: 1px solid var(--rule);
 }
 
-.total-ratio {
+.total {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
+  align-items: baseline;
+  gap: 1px;
+  color: var(--ink);
+}
+
+.total-num {
+  font-size: var(--t-17);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.total-pct {
+  font-size: var(--t-12);
+  color: var(--ink-3);
   font-weight: 500;
 }
 
-.total-ratio .label {
-  color: #606266;
+.total.is-off .total-num,
+.total.is-off .total-pct {
+  color: var(--warn);
 }
 
-.total-ratio .value {
-  color: #67c23a;
-}
-
-.total-ratio .value.invalid {
-  color: #f56c6c;
-  font-weight: bold;
-}
-
-.warning-icon {
-  color: #e6a23c;
-  margin-left: 8px;
+.warn {
+  margin-left: 6px;
+  font-size: 13px;
+  color: var(--warn);
   cursor: help;
-  font-size: 16px;
-  vertical-align: middle;
 }
 
-.ratio-adjuster-list {
-  flex: 1;
+/* ---------- rows ---------- */
+.rows {
+  flex: none;
 }
 
-.ratio-adjuster-item {
-  margin-bottom: 24px;
-  padding: 16px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
-  transition: all 0.3s ease;
+.row {
+  padding: 13px 24px 10px;
+  border-bottom: 1px solid var(--rule);
+  transition: background-color var(--dur-2) var(--ease);
 }
 
-.ratio-adjuster-item:hover {
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+.row:hover {
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent);
 }
 
-.asset-info {
+.row-main {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
-  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
 }
 
-.asset-info-left {
-  display: flex;
-  align-items: center;
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  transform: rotate(45deg);
 }
 
-.asset-color-indicator {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  margin-right: 8px;
-}
-
-.asset-name {
-  font-size: 14px;
+.row-name {
+  font-size: 13.5px;
   font-weight: 500;
-  color: #303133;
+  letter-spacing: 0.015em;
+  color: var(--ink);
 }
 
-.asset-type {
-  font-size: 12px;
-  color: #606266;
-  margin-left: 8px;
-  padding: 2px 8px;
-  background-color: #ecf5ff;
-  border-radius: 10px;
+.row-type {
+  font-size: var(--t-11);
+  color: var(--ink-4);
 }
 
-.input-container {
+.row-tools {
+  margin-left: auto;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  margin-top: 10px;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease);
 }
 
-.asset-actions {
-  display: flex;
-  gap: 8px;
-  margin-right: 12px;
-  justify-content: flex-start;
-  align-items: center;
+.row:hover .row-tools,
+.row:focus-within .row-tools {
+  opacity: 1;
 }
 
-.asset-actions :deep(.el-button) {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.asset-actions :deep(.el-button__icon) {
-  font-size: 16px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 20px;
-  width: 20px;
-}
-
-.add-asset-button {
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 20px;
-  margin-top: 16px;
-  border: 2px dashed #dcdfe6;
-  border-radius: 8px;
+.tool {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  color: #606266;
+  transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
 }
 
-.add-asset-button:hover {
-  border-color: #409eff;
-  color: #409eff;
-  background-color: #ecf5ff;
+.tool:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  color: var(--ink);
 }
 
-/* 保存的配置容器 */
-.saved-configs-container {
-  margin-top: 16px;
+.tool--danger:hover {
+  background: var(--danger-wash);
+  color: var(--danger);
 }
 
-/* 保存的配置行 */
-.saved-configs-row {
+.tool:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tool:disabled:hover {
+  background: transparent;
+  color: var(--ink-3);
+}
+
+.row-value {
   display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 12px;
+  align-items: baseline;
+  gap: 1px;
+  margin-left: 6px;
 }
 
-/* 按钮行 */
-.saved-configs-buttons {
+.row-value :deep(.el-input-number) {
+  width: 54px;
+}
+
+.row-value :deep(.el-input__wrapper) {
+  padding: 0 4px;
+  background: transparent;
+  box-shadow: 0 0 0 1px transparent inset;
+  transition: box-shadow var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
+}
+
+.row:hover .row-value :deep(.el-input__wrapper),
+.row-value :deep(.el-input__wrapper.is-focus) {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--rule-strong) inset;
+}
+
+.row-value :deep(.el-input__inner) {
+  text-align: right;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  height: 22px;
+}
+
+.pct {
+  font-size: var(--t-11);
+  color: var(--ink-3);
+}
+
+.row-slider {
+  margin-top: 2px;
+}
+
+.row-slider :deep(.el-slider__runway) {
+  height: 2px;
+  background: var(--rule-strong);
+}
+
+.row-slider :deep(.el-slider__bar) {
+  background: var(--ink);
+}
+
+.row-slider :deep(.el-slider__button-wrapper) {
+  top: -15px;
+}
+
+.row-slider :deep(.el-slider__button) {
+  width: 10px;
+  height: 10px;
+  border-width: 2px;
+}
+
+.row-slider :deep(.el-slider__button-wrapper:hover .el-slider__button) {
+  transform: scale(1.45);
+}
+
+/* ---------- add ---------- */
+.add-row {
   display: flex;
-  gap: 12px;
   align-items: center;
-  justify-content: space-between;
-  margin: 0 auto;
-  max-width: 400px;
+  gap: 7px;
+  width: 100%;
+  padding: 13px 24px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
 }
 
-/* 保存的配置下拉框 */
-.saved-configs-select {
+.add-row:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent);
+}
+
+.add-row .el-icon {
+  font-size: 13px;
+}
+
+/* ---------- saved configs ---------- */
+.foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 18px 24px 20px;
+}
+
+.foot-label {
+  font-size: var(--t-11);
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.foot-select {
+  width: 100%;
+}
+
+.foot-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.foot-actions .el-button {
   flex: 1;
-  max-width: 400px;
-  height: 48px;
+  margin-left: 0;
 }
 
-/* 保存配置按钮 */
-.save-config-btn {
-  flex: 1;
-  max-width: calc(50% - 6px);
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 16px;
-  min-width: auto;
-}
-
-/* 新建配置按钮 */
-.new-config-btn {
-  flex: 1;
-  max-width: calc(50% - 6px);
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 16px;
-  min-width: auto;
-}
-
-.save-config-btn :deep(.el-button__icon),
-.new-config-btn :deep(.el-button__icon) {
-  font-size: 16px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 20px;
-  width: 20px;
-}
-
-/* 下拉选项样式 */
 .option-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px;
+  gap: 1px;
+  padding: 4px 0;
+  line-height: 1.5;
 }
 
 .option-name {
-  font-weight: 500;
-  font-size: 14px;
-  color: #303133;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .option-desc {
-  font-size: 12px;
-  color: #606266;
+  font-size: var(--t-12);
+  color: var(--ink-3);
 }
 
 .option-time {
-  font-size: 11px;
-  color: #909399;
-  margin-top: 4px;
-}
-
-.add-icon {
-  font-size: 16px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 24px;
-  width: 24px;
+  font-size: var(--t-11);
+  color: var(--ink-4);
 }
 
 .color-picker-container {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .color-value {
-  font-size: 12px;
-  color: #606266;
-  font-family: monospace;
+  font-size: var(--t-12);
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
 }
 
-.ratio-controls {
+.dialog-footer {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
-.input-container :deep(.el-input-number) {
-  width: 120px;
-}
-
-.empty-tip {
-  text-align: center;
-  padding: 40px 0;
-}
-
-.adjust-tip {
-  margin-top: 20px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .ratio-adjuster-item {
-    padding: 12px;
+@media (max-width: 1120px) {
+  .pane-head {
+    border-bottom: 1px solid var(--rule);
   }
 }
 </style>

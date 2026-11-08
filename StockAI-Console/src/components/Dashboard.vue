@@ -543,79 +543,77 @@ function initProfitChart() {
         trigger: 'axis',
         formatter: function(params) {
           const data = params[0];
-          return `${data.axisValue}: <b>¥${data.value.toLocaleString()}</b>`;
+          return `${data.axisValue}<br/><b>¥${data.value.toLocaleString()}</b>`;
         },
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderColor: '#e5e7eb',
+        backgroundColor: '#ffffff',
+        borderColor: '#e5e3dd',
         borderWidth: 1,
+        padding: [8, 10],
         textStyle: {
-          color: '#374151'
-        }
+          color: '#14171a',
+          fontSize: 12
+        },
+        extraCssText: 'box-shadow: 0 8px 24px -10px rgba(20,23,26,0.25); border-radius: 8px;'
       },
       legend: {
         data: ['收益曲线'],
         top: 0,
         right: 0,
+        icon: 'roundRect',
+        itemWidth: 10,
+        itemHeight: 3,
+        itemGap: 8,
         textStyle: {
-          fontSize: 12,
-          color: '#6b7280'
+          fontSize: 11,
+          color: '#858b92'
         }
       },
       grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '10%',
-        top: '8%',
+        left: '2%',
+        right: '2%',
+        bottom: 24,
+        top: 34,
         containLabel: true
       },
       toolbox: {
         feature: {
-          dataZoom: {
-            yAxisIndex: 'none'
-          },
+          dataZoom: { yAxisIndex: 'none' },
           restore: {},
           saveAsImage: {}
         },
-        top: 0,
-        right: '15%'
+        iconStyle: { borderColor: '#a9aeb4' },
+        top: -4,
+        right: '16%'
       },
       xAxis: {
         type: 'category',
         boundaryGap: false,
         data: profitChartData.value.labels,
         axisLine: {
-          lineStyle: {
-            color: '#e5e7eb'
-          }
+          lineStyle: { color: '#e5e3dd' }
         },
-        axisTick: {
-          show: false
-        },
+        axisTick: { show: false },
         axisLabel: {
-          fontSize: 12,
-          color: '#6b7280'
+          fontSize: 11,
+          color: '#858b92',
+          margin: 12
         }
       },
       yAxis: {
         type: 'value',
-        axisLine: {
-          lineStyle: {
-            color: '#e5e7eb'
-          }
-        },
-        axisTick: {
-          show: false
-        },
+        axisLine: { show: false },
+        axisTick: { show: false },
         axisLabel: {
-          fontSize: 12,
-          color: '#6b7280',
+          fontSize: 11,
+          color: '#858b92',
           formatter: function(value) {
             return '¥' + value.toLocaleString();
           }
         },
         splitLine: {
           lineStyle: {
-            color: '#f3f4f6'
+            color: '#f0eee9',
+            type: [2, 3]
           }
         }
       },
@@ -624,27 +622,22 @@ function initProfitChart() {
           type: 'inside',
           start: 0,
           end: 100
-        },
-        {
-          start: 0,
-          end: 100,
-          height: 15,
-          bottom: '2%'
         }
       ],
       series: [
         {
           name: '收益曲线',
           type: 'line',
-          smooth: true,
+          smooth: 0.25,
+          showSymbol: false,
           symbol: 'circle',
-          symbolSize: 6,
+          symbolSize: 5,
           lineStyle: {
-            color: '#3b82f6',
-            width: 3
+            color: '#2f5d50',
+            width: 1.5
           },
           itemStyle: {
-            color: '#3b82f6'
+            color: '#2f5d50'
           },
           areaStyle: {
             color: {
@@ -654,14 +647,8 @@ function initProfitChart() {
               x2: 0,
               y2: 1,
               colorStops: [
-                {
-                  offset: 0,
-                  color: 'rgba(59, 130, 246, 0.3)'
-                },
-                {
-                  offset: 1,
-                  color: 'rgba(59, 130, 246, 0.05)'
-                }
+                { offset: 0, color: 'rgba(47, 93, 80, 0.16)' },
+                { offset: 1, color: 'rgba(47, 93, 80, 0.00)' }
               ]
             }
           },
@@ -669,12 +656,12 @@ function initProfitChart() {
             focus: 'series'
           },
           data: profitChartData.value.datasets[0].data,
-          animationDuration: 1000,
+          animationDuration: 700,
           animationEasing: 'cubicOut'
         }
       ]
     };
-    
+
     echartsInstance.setOption(option);
     
     // 添加窗口大小变化监听，确保响应式
@@ -1162,152 +1149,123 @@ async function disableMonitor() {
 </script>
 
 <template>
-  <div class="w-full px-4 py-8 flex-grow dashboard-content">
-    <!-- 主要布局区域 -->
-    <el-row class="mb-8 w-full">
-      <!-- 第一区域：关键指标 -->
-      <el-col :span="12" class="column-left">
-        <el-card shadow="hover" class="main-card">
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-800 mb-6">投资总览</h2>
-          </template>
-          <el-row :gutter="16" class="stats-container">
-            <!-- 总收益 -->
-            <el-col :span="8">
-              <el-card shadow="hover" class="stat-card stat-card-1">
-                <div class="card-1 card-content-1">
-                  <div class="stat-value value-profit">
-                    <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
-                    <template v-else>
-                      {{ investmentOverview.totalProfit >= 0 ? '+' : '' }}{{ formatCurrency(investmentOverview.totalProfit) }}
-                    </template>
-                  </div>
-                  <div class="stat-label">持仓收益</div>
-                </div>
-              </el-card>
-            </el-col>
-            
-            <!-- 总收益率 -->
-            <el-col :span="8">
-              <el-card shadow="hover" class="stat-card stat-card-2">
-                <div class="card-1 card-content-2">
-                  <div class="stat-value value-rate">
-                    <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
-                    <template v-else>
-                      {{ investmentOverview.totalProfitRate >= 0 ? '+' : '' }}{{ formatPercentage(investmentOverview.totalProfitRate) }}
-                    </template>
-                  </div>
-                  <div class="stat-label">持仓收益率</div>
-                </div>
-              </el-card>
-            </el-col>
-            
-            <!-- 总资产 -->
-            <el-col :span="8">
-              <el-card shadow="hover" class="stat-card stat-card-3">
-                <div class="card-1 card-content-3">
-                  <div class="stat-value value-assets">
-                    <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
-                    <template v-else>
-                      {{ formatCurrency(investmentOverview.totalValue) }}
-                    </template>
-                  </div>
-                  <div class="stat-label">总资产</div>
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
-          
-          <!-- 简要数据说明 -->
-          <div class="summary-section">
-            <el-row :gutter="40" justify="space-between">
-              <el-col>
-                <span class="summary-label">总投资额:</span>
-                <span class="summary-value">
-                  <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
-                  <template v-else>
-                    {{ formatCurrency(investmentOverview.totalCost) }}
-                  </template>
-                </span>
-              </el-col>
-              <el-col>
-                <span class="summary-label">持仓股票:</span>
-                <span class="summary-value">
-                  <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
-                  <template v-else>
-                    {{ investmentOverview.positionCount }} 支
-                  </template>
-                </span>
-              </el-col>
-              <el-col>
-                <span class="summary-label">交易次数:</span>
-                <span class="summary-value">
-                  <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
-                  <template v-else>
-                    {{ investmentOverview.tradeCount }} 次
-                  </template>
-                </span>
-              </el-col>
-            </el-row>
-          </div>
-          
-          <!-- Error message -->
-          <el-alert
-            v-if="errorInvestmentOverview"
-            title="获取投资数据失败"
-            :description="errorInvestmentOverview"
-            type="error"
-            show-icon
-            class="mt-4"
-          >
-            <template #default>
-              <el-button type="primary" size="small" @click="fetchInvestmentOverview">重试</el-button>
-            </template>
-          </el-alert>
-        </el-card>
-      </el-col>
-      
-      <!-- 第二区域：收益波动曲线 -->
-      <el-col :span="12" class="column-right">
-        <el-card shadow="hover" class="main-card">
-          <template #header>
-            <div class="chart-header-container">
-              <h2 class="chart-title">收益波动曲线</h2>
-              <div class="time-filters">
-                <el-radio-group v-model="timeFilter" size="small">
-                  <el-radio-button label="1月">1月</el-radio-button>
-                  <el-radio-button label="3月">3月</el-radio-button>
-                  <el-radio-button label="6月">6月</el-radio-button>
-                  <el-radio-button label="1年">1年</el-radio-button>
-                  <el-radio-button label="全部">全部</el-radio-button>
-                </el-radio-group>
-              </div>
+  <div class="page dashboard-content">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">投资</h1>
+        <p class="page-sub">持仓、收益和净值曲线，放在一张卷宗里看。</p>
+      </div>
+      <div class="page-meta">
+        <span>持仓 {{ stockData.length }} 支</span>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <!-- 关键指标 -->
+      <section class="paper paper--stats">
+        <div class="pane-head">
+          <h2 class="pane-title">投资总览</h2>
+          <span class="pane-note">按最新行情折算</span>
+        </div>
+
+        <div class="stat-strip">
+          <div class="stat">
+            <div class="stat-label">持仓收益</div>
+            <div class="stat-value num" :class="investmentOverview.totalProfit > 0 ? 'up' : investmentOverview.totalProfit < 0 ? 'down' : ''">
+              <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
+              <template v-else>{{ investmentOverview.totalProfit >= 0 ? '+' : '' }}{{ formatCurrency(investmentOverview.totalProfit) }}</template>
             </div>
-          </template>
-          
-          <!-- 图表容器 -->
-          <div class="chart-container">
-            <div id="profitChart"></div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
-    
-    <!-- 第三区域：持仓列表 -->
-    <el-card shadow="hover" class="mt-5 position-list-card">
-      <template #header>
-        <div class="position-list-header">
-          <h2 class="position-list-title">持仓列表</h2>
-          <div class="action-buttons">
-            <el-button type="success" @click="showBuyModal = true" class="buy-button">
-              <el-icon class="button-icon"><Plus /></el-icon>买入股票
-            </el-button>
-            <el-button type="danger" @click="showSellModal = true">
-              <el-icon class="button-icon"><Minus /></el-icon>卖出股票
-            </el-button>
+          <div class="stat">
+            <div class="stat-label">持仓收益率</div>
+            <div class="stat-value num" :class="investmentOverview.totalProfitRate > 0 ? 'up' : investmentOverview.totalProfitRate < 0 ? 'down' : ''">
+              <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
+              <template v-else>{{ investmentOverview.totalProfitRate >= 0 ? '+' : '' }}{{ formatPercentage(investmentOverview.totalProfitRate) }}</template>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">总资产</div>
+            <div class="stat-value num">
+              <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
+              <template v-else>{{ formatCurrency(investmentOverview.totalValue) }}</template>
+            </div>
           </div>
         </div>
-      </template>
+
+        <div class="summary-section">
+          <div class="summary-item">
+            <span class="summary-label">总投资额</span>
+            <span class="summary-value num">
+              <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
+              <template v-else>{{ formatCurrency(investmentOverview.totalCost) }}</template>
+            </span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">持仓股票</span>
+            <span class="summary-value num">
+              <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
+              <template v-else>{{ investmentOverview.positionCount }} 支</template>
+            </span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">交易次数</span>
+            <span class="summary-value num">
+              <el-skeleton :rows="1" animated v-if="loadingInvestmentOverview" />
+              <template v-else>{{ investmentOverview.tradeCount }} 次</template>
+            </span>
+          </div>
+        </div>
+
+        <el-alert
+          v-if="errorInvestmentOverview"
+          title="获取投资数据失败"
+          :description="errorInvestmentOverview"
+          type="error"
+          show-icon
+          :closable="false"
+          class="stat-error"
+        >
+          <template #default>
+            <el-button size="small" @click="fetchInvestmentOverview">重试</el-button>
+          </template>
+        </el-alert>
+      </section>
+
+      <!-- 收益曲线 -->
+      <section class="paper paper--chart">
+        <div class="pane-head">
+          <h2 class="pane-title">收益曲线</h2>
+          <el-radio-group v-model="timeFilter" size="small">
+            <el-radio-button label="1月">1月</el-radio-button>
+            <el-radio-button label="3月">3月</el-radio-button>
+            <el-radio-button label="6月">6月</el-radio-button>
+            <el-radio-button label="1年">1年</el-radio-button>
+            <el-radio-button label="全部">全部</el-radio-button>
+          </el-radio-group>
+        </div>
+
+        <div class="chart-container">
+          <div id="profitChart"></div>
+          <div v-if="!profitChartData.labels.length" class="chart-empty">
+            还没有净值记录 · 有成交后曲线会自动长出来
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 第三区域：持仓列表 -->
+    <section class="paper paper--holdings">
+      <div class="pane-head">
+        <h2 class="pane-title">持仓</h2>
+        <div class="action-buttons">
+          <el-button type="primary" @click="showBuyModal = true">
+            <el-icon class="button-icon"><Plus /></el-icon>买入
+          </el-button>
+          <el-button @click="showSellModal = true">
+            <el-icon class="button-icon"><Minus /></el-icon>卖出
+          </el-button>
+        </div>
+      </div>
       
       <!-- 股票持仓表格 -->
       <el-table v-if="!isStockListEmpty()" :data="stockData" stripe height="100%">
@@ -1391,15 +1349,14 @@ async function disableMonitor() {
       </el-table>
       
       <!-- 空状态 -->
-      <div v-else class="card-1 py-12">
-        <el-icon class="text-4xl text-gray-300 mb-4"><TrendCharts /></el-icon>
-        <h3 class="text-xl font-medium text-gray-700 mb-2">暂无持仓股票</h3>
-        <p class="text-gray-500 mb-6">点击"买入股票"按钮开始您的投资之旅</p>
+      <div v-else class="empty-state">
+        <p class="empty-title">还没有持仓</p>
+        <p class="empty-note">记下第一笔买入，收益和曲线会从这笔开始算。</p>
         <el-button type="primary" @click="showBuyModal = true">
-          <el-icon class="mr-1"><Plus /></el-icon>立即买入
+          <el-icon class="button-icon"><Plus /></el-icon>记一笔买入
         </el-button>
       </div>
-    </el-card>
+    </section>
     
     <!-- 买入股票弹窗 -->
     <el-dialog
@@ -1780,16 +1737,11 @@ async function disableMonitor() {
 </template>
 
 <style scoped>
-/* 必要的全局样式 */
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f8fafc;
-}
-
-/* 设置Dashboard宽度为100% */
+/* 与其它主页面共用同一张纸的宽度 */
 .main-content, .dashboard-content {
   width: 100% !important;
-  max-width: 100% !important;
+  max-width: var(--page-max) !important;
+  margin-inline: auto;
   overflow-x: hidden;
 }
 
@@ -2089,11 +2041,9 @@ el-table-column {
 
 /* Dashboard内容区域样式 */
 .dashboard-content {
-  height: 100%;
   width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 /* 统计汇总区域样式 */
@@ -2299,5 +2249,216 @@ el-table-column {
 .monitor-stock-name {
   font-weight: 600;
   color: #1f2937;
+}
+
+/* ==========================================================================
+   台账化改写
+   ========================================================================== */
+.dashboard-content {
+  background: transparent;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.paper {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet);
+  overflow: hidden;
+}
+
+.paper--holdings {
+  margin-top: 18px;
+}
+
+/* 三个指标：一条横排，不再套三张彩色小卡 */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.stat {
+  padding: 18px 22px 20px;
+}
+
+.stat + .stat {
+  border-left: 1px solid var(--rule);
+}
+
+.stat-label {
+  font-size: var(--t-11);
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: var(--t-21);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.stat-value.up {
+  color: #b3382c;
+}
+
+.stat-value.down {
+  color: #2f6b4f;
+}
+
+.summary-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding: 14px 22px 16px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.summary-label {
+  font-size: var(--t-12);
+  color: var(--ink-3);
+}
+
+.summary-value {
+  font-size: var(--t-13);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.stat-error {
+  margin: 0 22px 18px;
+}
+
+.chart-container {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+  padding: 0 10px 10px;
+}
+
+#profitChart {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--t-13);
+  color: var(--ink-4);
+  pointer-events: none;
+}
+
+.paper--chart .pane-head {
+  align-items: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-buttons .el-button {
+  margin-left: 0;
+}
+
+.button-icon {
+  margin-right: 4px;
+}
+
+.paper--holdings :deep(.el-table) {
+  border-top: 1px solid var(--rule);
+}
+
+.paper--holdings :deep(.el-table th.el-table__cell) {
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--rule);
+}
+
+.paper--holdings :deep(.el-table td.el-table__cell) {
+  padding: 11px 0;
+}
+
+.paper--holdings :deep(.el-table .cell) {
+  font-variant-numeric: tabular-nums;
+}
+
+.paper--holdings :deep(.el-table__row:hover > td.el-table__cell) {
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+.text-red-600 {
+  color: #b3382c !important;
+}
+
+.text-green-600 {
+  color: #2f6b4f !important;
+}
+
+.text-red-600 .el-icon,
+.text-green-600 .el-icon {
+  font-size: 12px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 24px 68px;
+  border-top: 1px solid var(--rule);
+}
+
+.empty-icon {
+  font-size: 22px;
+  color: var(--ink-4);
+  margin-bottom: 14px;
+}
+
+.empty-title {
+  font-size: var(--t-15);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.empty-note {
+  margin: 6px 0 18px;
+  font-size: var(--t-13);
+  color: var(--ink-3);
+}
+
+@media (max-width: 1120px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .stat-strip {
+    grid-template-columns: 1fr;
+  }
+  .stat + .stat {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
 }
 </style>

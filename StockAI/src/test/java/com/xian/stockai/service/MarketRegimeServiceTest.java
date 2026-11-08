@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,7 +58,12 @@ class MarketRegimeServiceTest {
         IndexDailyQuotes q = new IndexDailyQuotes();
         q.setClose(new BigDecimal(close));
         q.setVolume(new BigDecimal(volume));
+        q.setTradeDate(today());
         return q;
+    }
+
+    private String today() {
+        return LocalDate.now(ZoneId.of("Asia/Shanghai")).toString();
     }
 
     private List<IndexDailyQuotes> trendingQuotes() {
@@ -174,6 +180,24 @@ class MarketRegimeServiceTest {
         ArgumentCaptor<MarketRegimeRecord> captor = ArgumentCaptor.forClass(MarketRegimeRecord.class);
         verify(marketRegimeRecordRepository).save(captor.capture());
         assertEquals("existing-id", captor.getValue().getId());
+    }
+
+    @Test
+    void evaluateAndSaveRefusesStaleBar() {
+        List<IndexDailyQuotes> stale = new ArrayList<>();
+        for (int i = 0; i < 250; i++) {
+            IndexDailyQuotes q = quote(String.valueOf(3249 - i), "1000000");
+            q.setTradeDate("2026-11-05");
+            stale.add(q);
+        }
+        when(indexDailyQuotesRepository.findTop250ByIndexCodeOrderByTradeDateDesc("sh000300"))
+                .thenReturn(stale);
+
+        Result<MarketRegimeRecord> result = service.evaluateAndSave();
+
+        assertFalse(result.checkSuccess(), "日线没更新到当天时不应写记录");
+        assertTrue(result.getMessage().contains("未更新到当天"));
+        verify(marketRegimeRecordRepository, never()).save(any(MarketRegimeRecord.class));
     }
 
     @Test

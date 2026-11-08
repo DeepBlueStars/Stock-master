@@ -4,6 +4,7 @@ import com.xian.stockai.service.tradeplan.TradePlanService;
 import com.xian.stockai.service.tradeplan.TradePlanSummaryService;
 import com.xian.stockai.vo.MonitorLinkRes;
 import com.xian.stockai.vo.Result;
+import com.xian.stockai.vo.TradePlanBatchStateReq;
 import com.xian.stockai.vo.TradePlanRes;
 import com.xian.stockai.vo.TradePlanSummaryBriefRes;
 import com.xian.stockai.vo.TradePlanSummaryDetailReq;
@@ -38,6 +39,14 @@ public class TradePlanController {
     @PostMapping("/list")
     public Result<List<TradePlanRes>> list(@RequestBody UserRequest request) {
         return tradePlanService.list(request.getUserId());
+    }
+
+    /**
+     * 勾选 / 取消某一批「已买入」
+     */
+    @PostMapping("/batch/state")
+    public Result<TradePlanRes> markBatch(@RequestBody TradePlanBatchStateReq req) {
+        return tradePlanService.markBatch(req.getUserId(), req.getSymbol(), req.getIndex(), req.getBought());
     }
 
     /**

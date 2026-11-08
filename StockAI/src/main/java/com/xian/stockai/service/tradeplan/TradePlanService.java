@@ -83,9 +83,71 @@ public class TradePlanService {
         existing.ifPresent(previous -> {
             plan.setId(previous.getId());
             plan.setMonitorLinked(Boolean.TRUE.equals(previous.getMonitorLinked()));
+            carryOverBatchState(previous.getBuyBatches(), plan.getBuyBatches());
         });
         tradePlanRepository.save(plan);
         log.debug("交易计划已生成: userId={}, symbol={}, degraded={}", userId, symbol, plan.getDegraded());
+    }
+
+    /**
+     * 重算会重建批次列表，但「已买入」是用户的手工记录，不能因为加减仓就清掉。
+     * 按批次下标把标记搬过去：批次数量变化时只搬能对上的那部分，并留日志。
+     */
+    private void carryOverBatchState(List<TradePlan.TradePlanBatch> previous,
+                                     List<TradePlan.TradePlanBatch> current) {
+        if (previous == null || previous.isEmpty() || current == null || current.isEmpty()) {
+            return;
+        }
+        int overlap = Math.min(previous.size(), current.size());
+        for (int i = 0; i < overlap; i++) {
+            TradePlan.TradePlanBatch old = previous.get(i);
+            TradePlan.TradePlanBatch now = current.get(i);
+            if (old != null && Boolean.TRUE.equals(old.getBought())) {
+                now.setBought(Boolean.TRUE);
+                now.setBoughtAt(old.getBoughtAt());
+            }
+        }
+        if (previous.size() != current.size()) {
+            log.info("批次数量变化 {} -> {}，已买入标记按下标保留前 {} 批",
+                    previous.size(), current.size(), overlap);
+        }
+    }
+
+    /**
+     * 勾选 / 取消勾选某一批「已买入」。
+     */
+    public Result<TradePlanRes> markBatch(String userId, String symbol, Integer index, Boolean bought) {
+        if (userId == null || userId.isEmpty()) {
+            return Result.fail("用户ID不能为空");
+        }
+        if (symbol == null || symbol.isEmpty()) {
+            return Result.fail("股票代码不能为空");
+        }
+        TradePlan plan = tradePlanRepository.findByUserIdAndSymbol(userId, symbol).orElse(null);
+        if (plan == null) {
+            return Result.fail("交易计划不存在：" + symbol);
+        }
+        List<TradePlan.TradePlanBatch> batches = plan.getBuyBatches();
+        if (batches == null || index == null || index < 0 || index >= batches.size()) {
+            return Result.fail("批次下标越界");
+        }
+        TradePlan.TradePlanBatch batch = batches.get(index);
+        boolean on = Boolean.TRUE.equals(bought);
+        batch.setBought(on);
+        batch.setBoughtAt(on ? LocalDateTime.now() : null);
+        plan.setUpdatedAt(LocalDateTime.now());
+        tradePlanRepository.save(plan);
+        log.info("交易计划批次标记: symbol={}, index={}, bought={}", symbol, index, on);
+        return Result.success(TradePlanRes.from(plan));
+    }
+
+    /**
+     * 计划是不是已经没法看了：没有批次阶梯，或者当时 K 线不足被降级。
+     * 这两种情况都说明它是旧数据，重算一次才有用；重算时已买入标记会按下标保留。
+     */
+    private boolean needsRefresh(TradePlan plan) {
+        boolean noBatches = plan.getBuyBatches() == null || plan.getBuyBatches().isEmpty();
+        return noBatches || Boolean.TRUE.equals(plan.getDegraded());
     }
 
     /**
@@ -107,10 +169,10 @@ public class TradePlanService {
                 continue;
             }
             TradePlan plan = planBySymbol.get(position.getSymbol());
-            if (plan == null) {
+            if (plan == null || needsRefresh(plan)) {
                 try {
                     refreshPlan(userId, position.getSymbol());
-                    plan = tradePlanRepository.findByUserIdAndSymbol(userId, position.getSymbol()).orElse(null);
+                    plan = tradePlanRepository.findByUserIdAndSymbol(userId, position.getSymbol()).orElse(plan);
                 } catch (Exception e) {
                     log.error("补生成交易计划失败: userId={}, symbol={}", userId, position.getSymbol(), e);
                 }
