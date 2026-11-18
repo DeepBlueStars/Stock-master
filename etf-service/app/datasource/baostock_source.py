@@ -1,8 +1,7 @@
 import logging
-from datetime import datetime
 from typing import List, Optional
 
-from ..normalize.schema import DailyQuote, Fundamental, to_float, to_date, row_get
+from ..normalize.schema import DailyQuote, Fundamental, beijing_now, to_float, to_date, row_get, utc_now
 from .base import DataSource
 
 logger = logging.getLogger(__name__)
@@ -40,7 +39,7 @@ class BaostockSource(DataSource):
     def _fetch_daily(self, code: str, start_date: Optional[str], bs_code: str) -> Optional[List[dict]]:
         bs = self._ensure_login()
         start = _normalize_date(start_date, "1990-01-01")
-        end = datetime.now().strftime("%Y-%m-%d")
+        end = beijing_now().strftime("%Y-%m-%d")
         rs = bs.query_history_k_data_plus(
             bs_code, "date,open,high,low,close,volume,amount",
             start_date=start, end_date=end, frequency="d", adjustflag="3")
@@ -53,7 +52,7 @@ class BaostockSource(DataSource):
         if not rows:
             return None
         fields = rs.fields
-        now = datetime.now()
+        now = utc_now()
         out = []
         for raw in rows:
             row = dict(zip(fields, raw))
@@ -81,7 +80,7 @@ class BaostockSource(DataSource):
     def fetch_fundamentals(self, code: str) -> Optional[List[dict]]:
         bs = self._ensure_login()
         bs_code = self._bs_code(code)
-        year = datetime.now().year
+        year = beijing_now().year
         profit_rows = []
         growth_rows = []
         for quarter in (1, 2, 3, 4):
@@ -96,7 +95,7 @@ class BaostockSource(DataSource):
         if not profit_rows:
             return None
         growth_by_stat = {g.get("statDate"): g for g in growth_rows}
-        now = datetime.now()
+        now = utc_now()
         out = []
         for p in profit_rows:
             g = growth_by_stat.get(p.get("statDate"), {})

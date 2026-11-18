@@ -1,9 +1,10 @@
 import akshare as ak
 import pandas as pd
 from typing import Dict, Any, List
-from datetime import datetime
 import logging
 import time
+
+from ..normalize.schema import beijing_now, to_float, utc_now
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -82,8 +83,8 @@ class ETFService:
     def transform_etf_data_for_db(self, symbol: str, etf_data: Dict[str, Any]) -> Dict[str, Any]:
         """转换ETF数据为数据库存储格式"""
         # logger.info(f"开始转换ETF[{symbol}]数据为数据库存储格式")
-        current_time = datetime.now()
-        today = current_time.strftime("%Y-%m-%d")
+        current_time = utc_now()
+        today = beijing_now().strftime("%Y-%m-%d")
         
         # 处理股票代码格式，只保留6位数
         processed_symbol = symbol[-6:] if len(symbol) > 6 else symbol
@@ -91,17 +92,13 @@ class ETFService:
         # 转换成交量和成交额（ak.fund_etf_spot_em返回的是数值类型）
         # 东财快照的「成交量」单位是手，库里统一按股存（历史回填也是股），需 ×100；
         # 新浪兜底源没有「开盘价」等字段且成交量本身就是股，不做换算。
-        volume = float(etf_data.get("成交量", 0))
+        volume = to_float(etf_data.get("成交量", 0))
         if "开盘价" in etf_data:
             volume *= 100
-        amount = float(etf_data.get("成交额", 0))
-        
-        # 处理涨跌幅字段，支持float和string类型
-        pct_change_value = etf_data.get("涨跌幅", 0)
-        if isinstance(pct_change_value, str):
-            pct_change_value = float(pct_change_value.replace("%", ""))
-        
+        amount = to_float(etf_data.get("成交额", 0))
+
         # 构建数据库存储格式
+        # 上游停牌/未上市时快照里是 NaN，统一经 to_float 兜底成 0，避免 NaN 入库
         result = {
             "symbol": processed_symbol,
             "market": "CN",  # 固定值为CN
@@ -110,14 +107,14 @@ class ETFService:
             "data_source": "akshare",  # 固定值为akshare
             "created_at": current_time,
             "updated_at": current_time,
-            "open": float(etf_data.get("开盘价", 0)),
-            "high": float(etf_data.get("最高价", 0)),
-            "low": float(etf_data.get("最低价", 0)),
-            "close": float(etf_data.get("最新价", 0)),
+            "open": to_float(etf_data.get("开盘价", 0)),
+            "high": to_float(etf_data.get("最高价", 0)),
+            "low": to_float(etf_data.get("最低价", 0)),
+            "close": to_float(etf_data.get("最新价", 0)),
             "volume": volume,
             "amount": amount,
-            "change": float(etf_data.get("涨跌额", 0)),
-            "pct_change": float(pct_change_value)
+            "change": to_float(etf_data.get("涨跌额", 0)),
+            "pct_change": to_float(etf_data.get("涨跌幅", 0))
         }
         
         # logger.info(f"成功转换ETF[{symbol}]数据为数据库存储格式")
@@ -165,9 +162,8 @@ class ETFService:
     
     def transform_etf_basic_info(self, etf_dict: Dict[str, Any]) -> Dict[str, Any]:
         """转换ETF基本信息为数据库存储格式"""
-        from datetime import datetime
         # logger.info(f"开始转换ETF[{etf_dict.get('代码', '未知')}]基本信息为数据库存储格式")
-        current_time = datetime.now()
+        current_time = utc_now()
         
         # 获取原始代码
         original_symbol = etf_dict.get("代码", "")

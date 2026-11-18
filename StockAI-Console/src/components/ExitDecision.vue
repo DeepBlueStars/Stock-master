@@ -124,11 +124,15 @@ const sortedHoldings = computed(() =>
   holdings.value
     .map((h) => {
       const stopDist = dist(h.stop, h.price)
+      const tpDist = h.takeProfit == null ? NaN : dist(h.takeProfit, h.price)
       return {
         ...h,
         stopDist,
+        tpDist,
+        tpDone: !Number.isFinite(tpDist),
         floatDist: dist(h.price, h.cost),
         near: isNearDist(stopDist),
+        tpNear: isNearDist(tpDist),
         fill: fillOf(stopDist)
       }
     })
@@ -463,7 +467,7 @@ const statusClass = { ok: 'is-ok', warn: 'is-warn', tp1: 'is-tp1', nodata: 'is-o
         <section class="sheet">
           <div class="pane-head">
             <h2 class="pane-title"><span class="idx">02</span>持仓纪律</h2>
-            <span class="pane-note">按距止损从近到远</span>
+            <span class="pane-note">按距止损从近到远 · 小字为距现价</span>
           </div>
 
           <p v-if="loading" class="empty">正在读取持仓与阈值…</p>
@@ -471,18 +475,20 @@ const statusClass = { ok: 'is-ok', warn: 'is-warn', tp1: 'is-tp1', nodata: 'is-o
           <p v-else-if="!sortedHoldings.length" class="empty">还没有持仓，先去录入。</p>
           <table v-else class="ledger">
             <colgroup>
-              <col style="width: 28%" />
-              <col style="width: 16%" />
-              <col style="width: 18%" />
-              <col style="width: 24%" />
-              <col style="width: 14%" />
+              <col style="width: 22%" />
+              <col style="width: 11%" />
+              <col style="width: 11%" />
+              <col style="width: 23%" />
+              <col style="width: 23%" />
+              <col style="width: 10%" />
             </colgroup>
             <thead>
               <tr>
                 <th class="c-name">标的</th>
                 <th>现价</th>
                 <th>浮动</th>
-                <th>止损余量</th>
+                <th>止损<span class="th-sub">价 · 余量</span></th>
+                <th>止盈<span class="th-sub">价 · 余量</span></th>
                 <th>状态</th>
               </tr>
             </thead>
@@ -503,11 +509,22 @@ const statusClass = { ok: 'is-ok', warn: 'is-warn', tp1: 'is-tp1', nodata: 'is-o
                     suffix="%"
                   />
                 </td>
-                <td class="c-num stop" data-label="止损余量">
-                  <span class="num" :class="{ near: h.near }">{{ pctText(h.stopDist) }}</span>
+                <td class="c-num stop" data-label="止损">
+                  <CountUp class="cell-main" :value="n(h.stop)" :decimals="decOf(h.stop)" />
+                  <span class="cell-sub" :class="{ 'is-near': h.near }">{{ pctText(h.stopDist) }}</span>
                   <span class="meter" :class="{ 'is-near': h.near }" aria-hidden="true">
                     <i :style="{ width: barsReady ? h.fill + '%' : '0%' }"></i>
                   </span>
+                </td>
+                <td class="c-num tp" data-label="止盈">
+                  <template v-if="h.tpDone">
+                    <span class="cell-main is-muted">—</span>
+                    <span class="cell-sub">两档已完成</span>
+                  </template>
+                  <template v-else>
+                    <CountUp class="cell-main" :value="n(h.takeProfit)" :decimals="decOf(h.takeProfit)" />
+                    <span class="cell-sub" :class="{ 'is-near-tp': h.tpNear }">{{ pctText(h.tpDist) }}</span>
+                  </template>
                 </td>
                 <td class="c-num" data-label="状态">
                   <span class="tag" :class="statusClass[h.status] || 'is-ok'">
@@ -1164,14 +1181,44 @@ const statusClass = { ok: 'is-ok', warn: 'is-warn', tp1: 'is-tp1', nodata: 'is-o
   margin-top: 2px;
 }
 
+.ledger th .th-sub {
+  display: block;
+  color: var(--ink-4);
+}
+
 .ledger .price {
   font-size: var(--t-13);
   font-weight: 500;
   letter-spacing: -0.01em;
 }
 
-.ledger .stop .near {
+.ledger .cell-main {
+  display: block;
+  font-size: var(--t-13);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.ledger .cell-main.is-muted {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.ledger .cell-sub {
+  display: block;
+  margin-top: 1px;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-11);
+  color: var(--ink-3);
+}
+
+.ledger .cell-sub.is-near {
   color: var(--danger);
+}
+
+.ledger .cell-sub.is-near-tp {
+  color: var(--warn);
 }
 
 .meter {
@@ -1636,6 +1683,16 @@ const statusClass = { ok: 'is-ok', warn: 'is-warn', tp1: 'is-tp1', nodata: 'is-o
     display: inline-block;
     margin: 0 0 0 8px;
     vertical-align: middle;
+  }
+
+  .ledger td .cell-main,
+  .ledger td .cell-sub {
+    display: inline;
+    margin: 0;
+  }
+
+  .ledger td .cell-sub {
+    margin-left: 6px;
   }
 
   .ref-body {

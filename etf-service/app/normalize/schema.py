@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, List
@@ -8,6 +9,16 @@ BEIJING_TZ = timezone(timedelta(hours=8))
 def beijing_now() -> datetime:
     """返回北京时间（naive datetime）：容器时区为 UTC 时也不会偏 8 小时。"""
     return datetime.now(timezone.utc).astimezone(BEIJING_TZ).replace(tzinfo=None)
+
+
+def utc_now() -> datetime:
+    """返回带 UTC 时区的当前时间，用于写库的 created_at / updated_at。
+
+    pymongo 会把 naive datetime 当作 UTC 原样存储：容器在北京时区时，
+    naive 的 22:10 会变成 22:10Z，读端再按 +08:00 展示就成了次日 06:10。
+    统一用 aware UTC 入库，存进去的才是真实时刻。
+    """
+    return datetime.now(timezone.utc)
 
 
 @dataclass
@@ -21,8 +32,8 @@ class DailyQuote:
     volume: float
     amount: float
     data_source: str
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -39,7 +50,7 @@ class Fundamental:
     profit_yoy: float
     gross_margin: float
     data_source: str
-    updated_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=utc_now)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -51,25 +62,31 @@ class IndustryConcept:
     industry: str
     concepts: List[str]
     data_source: str
-    updated_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=utc_now)
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
 def to_float(value: Any, default: float = 0.0) -> float:
-    """把上游字符串/数值清洗为 float，失败降级为 default。"""
+    """把上游字符串/数值清洗为 float，失败或非有限值（NaN/Inf）降级为 default。
+
+    pandas 在缺值时给的是 NaN，直接入库会让下游按 BigDecimal 读取的服务整页报错，
+    所以这里必须把 NaN/Inf 一起挡掉。
+    """
     if value is None:
         return default
     if isinstance(value, (int, float)):
-        return float(value)
+        number = float(value)
+        return number if math.isfinite(number) else default
     s = str(value).replace(",", "").replace("%", "").strip()
-    if s in ("", "-", "--", "None", "nan"):
+    if s.lower() in ("", "-", "--", "none", "nan", "inf", "-inf"):
         return default
     try:
-        return float(s)
+        number = float(s)
     except ValueError:
         return default
+    return number if math.isfinite(number) else default
 
 
 def to_date(value: Any, default: str = "") -> str:
@@ -118,7 +135,7 @@ class IndexValuation:
     pe_percentile: float
     pb_percentile: float
     data_source: str
-    updated_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=utc_now)
 
     def to_dict(self) -> dict:
         return asdict(self)

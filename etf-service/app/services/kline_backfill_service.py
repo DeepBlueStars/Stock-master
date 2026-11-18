@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 
 from ..database.mongo import mongo_client
-from ..normalize.schema import to_date
+from ..normalize.schema import beijing_now, to_date
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +197,7 @@ class KlineBackfillService:
     @staticmethod
     def clean_rows(rows: list, today: Optional[str] = None) -> list:
         """丢弃无效行、补齐缺失的 OHLC，并按交易日去重（保留最后一条）。"""
-        today = today or datetime.now().strftime("%Y-%m-%d")
+        today = today or beijing_now().strftime("%Y-%m-%d")
         by_date = {}
         for r in rows or []:
             trade_date = to_date(r.get("trade_date"))

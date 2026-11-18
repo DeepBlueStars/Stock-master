@@ -1,10 +1,9 @@
 import logging
-from datetime import datetime
 from typing import Dict, List, Optional
 
 from ..datasource.akshare_source import AkshareSource
 from ..database.mongo import mongo_client
-from ..normalize.schema import IndexValuation, compute_percentile
+from ..normalize.schema import IndexValuation, compute_percentile, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ class ValuationService:
                 pe_percentile=compute_percentile(pe_history, pe) if pe is not None else 0.0,
                 pb_percentile=compute_percentile(pb_history, pb) if pb is not None else 0.0,
                 data_source="akshare",
-                updated_at=datetime.now(),
+                updated_at=utc_now(),
             ).to_dict()
             if self.mongo.upsert_index_valuation(record):
                 count += 1

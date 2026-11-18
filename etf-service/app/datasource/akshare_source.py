@@ -1,14 +1,15 @@
 import logging
-from datetime import datetime
 from typing import List, Optional
 
 from ..normalize.schema import (
     DailyQuote,
     Fundamental,
     IndustryConcept,
+    beijing_now,
     to_float,
     to_date,
     row_get,
+    utc_now,
 )
 from .base import DataSource
 
@@ -25,11 +26,11 @@ class AkshareSource(DataSource):
         self.ak = ak
 
     def _now(self):
-        return datetime.now()
+        return utc_now()
 
     def fetch_index_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
         start = (start_date or "19900101").replace("-", "")
-        end = self._now().strftime("%Y%m%d")
+        end = beijing_now().strftime("%Y%m%d")
         df = self.ak.index_zh_a_hist(symbol=code[-6:], period="daily", start_date=start, end_date=end)
         if df is None or df.empty:
             return None
@@ -53,7 +54,7 @@ class AkshareSource(DataSource):
 
     def fetch_stock_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
         start = (start_date or "19900101").replace("-", "")
-        end = self._now().strftime("%Y%m%d")
+        end = beijing_now().strftime("%Y%m%d")
         df = self.ak.stock_zh_a_hist(symbol=code, period="daily", start_date=start, end_date=end, adjust="")
         if df is None or df.empty:
             return None
@@ -83,7 +84,7 @@ class AkshareSource(DataSource):
         与 etf_daily_quotes 中存量数据（新浪口径，单位股）保持一致。
         """
         start = (start_date or "19900101").replace("-", "")
-        end = self._now().strftime("%Y%m%d")
+        end = beijing_now().strftime("%Y%m%d")
         df = self.ak.fund_etf_hist_em(
             symbol=code, period="daily", start_date=start, end_date=end, adjust=""
         )

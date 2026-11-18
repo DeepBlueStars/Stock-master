@@ -15,6 +15,8 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 
+from ..normalize.schema import utc_now
+
 logger = logging.getLogger(__name__)
 
 KIND_ETF = "etf"
@@ -197,7 +199,7 @@ class CorporateActionService:
         collection.delete_many({"symbol": symbol, "kind_source": "detector"})
         if not events:
             return
-        now = datetime.now()
+        now = utc_now()
         docs = []
         for event in events:
             docs.append({

@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import requests
 
-from ..normalize.schema import DailyQuote, to_date, to_float, to_market_symbol
+from ..normalize.schema import DailyQuote, beijing_now, to_date, to_float, to_market_symbol, utc_now
 from .base import DataSource
 
 logger = logging.getLogger(__name__)
@@ -25,13 +25,13 @@ class TencentSource(DataSource):
     def fetch_stock_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
         symbol = to_market_symbol(code)
         start = to_date(start_date or "2000-01-01") or "2000-01-01"
-        end = datetime.now().strftime("%Y-%m-%d")
+        end = beijing_now().strftime("%Y-%m-%d")
 
         rows = self._fetch_pages(symbol, start, end)
         if not rows:
             return None
 
-        now = datetime.now()
+        now = utc_now()
         out = []
         seen = set()
         for row in rows:

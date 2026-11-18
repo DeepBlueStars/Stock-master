@@ -1,9 +1,8 @@
 import logging
 import os
-from datetime import datetime
 from typing import List, Optional
 
-from ..normalize.schema import DailyQuote, Fundamental, to_float, to_date, row_get
+from ..normalize.schema import DailyQuote, Fundamental, beijing_now, to_float, to_date, row_get, utc_now
 from .base import DataSource
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class TushareSource(DataSource):
         if pro is None:
             return None
         start = (start_date or "19900101").replace("-", "")
-        end = datetime.now().strftime("%Y%m%d")
+        end = beijing_now().strftime("%Y%m%d")
         df = pro.index_daily(ts_code=self._ts_code(code), start_date=start, end_date=end)
         return self._map_daily(code, df)
 
@@ -47,14 +46,14 @@ class TushareSource(DataSource):
         if pro is None:
             return None
         start = (start_date or "19900101").replace("-", "")
-        end = datetime.now().strftime("%Y%m%d")
+        end = beijing_now().strftime("%Y%m%d")
         df = pro.daily(ts_code=self._ts_code(code), start_date=start, end_date=end)
         return self._map_daily(code, df)
 
     def _map_daily(self, code: str, df) -> Optional[List[dict]]:
         if df is None or df.empty:
             return None
-        now = datetime.now()
+        now = utc_now()
         out = []
         for _, r in df.iterrows():
             out.append(DailyQuote(
@@ -93,7 +92,7 @@ class TushareSource(DataSource):
             df_fin = None
         if df_fin is None or df_fin.empty:
             return None
-        now = datetime.now()
+        now = utc_now()
         rows = []
         for _, r in df_fin.iterrows():
             rows.append((to_date(row_get(r, "end_date", "ann_date")), r))

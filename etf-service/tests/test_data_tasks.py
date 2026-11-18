@@ -216,6 +216,13 @@ def test_start_scheduler_registers_daily_kline_incremental_at_1620(monkeypatch):
     assert "hour='16'" in trigger
     assert "minute='20'" in trigger
 
+    late = jobs["update_kline_incremental_late"]
+    late_trigger = str(late["trigger"])
+    assert late["func"] is etf_task.update_kline_incremental
+    assert "day_of_week='mon-fri'" in late_trigger
+    assert "hour='19'" in late_trigger
+    assert "minute='30'" in late_trigger
+
     sweep = jobs["update_kline_weekly_sweep"]
     sweep_trigger = str(sweep["trigger"])
     assert sweep["func"] is etf_task.update_kline_weekly_sweep
@@ -306,12 +313,8 @@ def test_snapshot_skips_weekend(monkeypatch):
 
     from app.tasks import etf_task
 
-    class _SaturdayDatetime(real_datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return real_datetime(2026, 10, 31, 10, 0)  # 周六
-
-    monkeypatch.setattr(etf_task, "datetime", _SaturdayDatetime)
+    # 2026-10-31 是周六（北京时间）
+    monkeypatch.setattr(etf_task, "beijing_now", lambda: real_datetime(2026, 10, 31, 10, 0))
     monkeypatch.setattr(
         etf_task, "_ensure_mongo", lambda: pytest.fail("周末不应写 ETF 日行情快照")
     )

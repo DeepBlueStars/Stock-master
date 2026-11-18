@@ -2,7 +2,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
-from datetime import datetime, timedelta
+from datetime import timedelta
 import logging
 import os
 import time
@@ -18,6 +18,7 @@ from ..services.index_service import index_service
 from ..services.kline_backfill_service import KIND_ETF, KIND_STOCK, KlineBackfillService
 from ..services.stock_service import stock_service
 from ..services.valuation_service import valuation_service
+from ..normalize.schema import beijing_now
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -66,7 +67,7 @@ def _with_mongo(operation):
 
 def _schedule_startup_jobs():
     """服务启动后异步补跑一次采集，避免阻塞 FastAPI 启动与调度器注册。"""
-    run_at = datetime.now() + timedelta(seconds=5)
+    run_at = beijing_now() + timedelta(seconds=5)
     jobs = (
         ("startup_update_etf_daily_quotes", update_etf_daily_quotes, "启动后更新ETF日行情数据"),
         ("startup_update_etf_basic_info", update_etf_basic_info, "启动后更新ETF基本信息"),
@@ -87,7 +88,7 @@ def _schedule_startup_jobs():
 
 def _update_etf_daily_quotes_once():
     # 周末不产生交易日数据，快照写进去的就是周五收盘的复制行，属于脏数据
-    if datetime.now().weekday() >= 5:
+    if beijing_now().weekday() >= 5:
         logger.info("周末非交易日，跳过ETF日行情快照")
         return
     _ensure_mongo()
@@ -259,6 +260,17 @@ def start_scheduler():
                 trigger=CronTrigger(day_of_week="mon-fri", hour=16, minute=20),
                 id="update_kline_incremental",
                 name="交易日16:20增量补全关注池日线",
+                replace_existing=True,
+                **DAILY_JOB_OPTIONS,
+            )
+
+            # 新浪日线 16:20 时往往还没发布当日数据，那一轮只能补到前一交易日，
+            # 当日行仍是凌晨快照写进去的昨收；收盘后补跑一轮，保证当日真实收盘价能覆盖它
+            scheduler.add_job(
+                func=update_kline_incremental,
+                trigger=CronTrigger(day_of_week="mon-fri", hour=19, minute=30),
+                id="update_kline_incremental_late",
+                name="交易日19:30补当日日线",
                 replace_existing=True,
                 **DAILY_JOB_OPTIONS,
             )

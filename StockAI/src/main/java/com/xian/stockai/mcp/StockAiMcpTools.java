@@ -4,6 +4,8 @@ import com.xian.stockai.po.Position;
 import com.xian.stockai.po.PositionMonitor;
 import com.xian.stockai.po.StockBasicInfo;
 import com.xian.stockai.po.StockTrade;
+import com.xian.stockai.po.Users;
+import com.xian.stockai.service.ConfigService;
 import com.xian.stockai.service.MonitorService;
 import com.xian.stockai.service.StockService;
 import com.xian.stockai.vo.PositionRes;
@@ -31,13 +33,16 @@ public class StockAiMcpTools {
 
     private final StockService stockService;
     private final MonitorService monitorService;
+    private final ConfigService configService;
     private final String defaultUserId;
 
     public StockAiMcpTools(StockService stockService,
                            MonitorService monitorService,
+                           ConfigService configService,
                            @Value("${stockai.mcp.default-user-id:}") String defaultUserId) {
         this.stockService = stockService;
         this.monitorService = monitorService;
+        this.configService = configService;
         this.defaultUserId = defaultUserId;
     }
 
@@ -184,6 +189,39 @@ public class StockAiMcpTools {
         return Result.success(snapshots);
     }
 
+    @Tool(name = "get_cash_balance", description = "查询当前账户的现金余额。")
+    public Result<CashBalance> getCashBalance(
+            @ToolParam(required = false, description = "用户ID，不填则使用服务端默认用户") String userId) {
+        String uid = resolveUserId(userId);
+        if (uid == null) {
+            return Result.fail("用户ID不能为空");
+        }
+        Result<Users> userResult = configService.getUserInfo(uid);
+        if (!userResult.checkSuccess()) {
+            return Result.fail(userResult.getMessage());
+        }
+        BigDecimal cash = userResult.getData().getCash();
+        return Result.success(new CashBalance(uid, cash == null ? BigDecimal.ZERO : cash));
+    }
+
+    @Tool(name = "update_cash_balance", description = "把账户现金余额更新为指定金额（直接覆盖，不是增量）。")
+    public Result<CashBalance> updateCashBalance(
+            @ToolParam(required = false, description = "用户ID，不填则使用服务端默认用户") String userId,
+            @ToolParam(description = "更新后的现金余额（元）") BigDecimal cash) {
+        String uid = resolveUserId(userId);
+        if (uid == null) {
+            return Result.fail("用户ID不能为空");
+        }
+        if (cash == null || cash.compareTo(BigDecimal.ZERO) < 0) {
+            return Result.fail("现金余额不能为空或小于0");
+        }
+        Result<Void> result = configService.updateCash(uid, cash);
+        if (!result.checkSuccess()) {
+            return Result.fail(result.getMessage());
+        }
+        return Result.success(result.getMessage(), new CashBalance(uid, cash));
+    }
+
     private String resolveUserId(String userId) {
         if (userId != null && !userId.isBlank()) {
             return userId;
@@ -249,6 +287,14 @@ public class StockAiMcpTools {
             BigDecimal transferFee,
             BigDecimal stampTax,
             BigDecimal actualAmount) {
+    }
+
+    /**
+     * 现金余额快照
+     */
+    public record CashBalance(
+            String userId,
+            BigDecimal cash) {
     }
 
     /**

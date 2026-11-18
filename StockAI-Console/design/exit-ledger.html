@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>StockAI · 今日决策 — 视觉稿</title>
+<style>
+/* ============================================================
+   直接内联 tokens.css，确保和项目现有皮肤一字不差
+   ============================================================ */
+:root {
+  --canvas: #ecebe7;
+  --surface: #ffffff;
+  --surface-sunken: #f7f6f2;
+  --surface-raised: #ffffff;
+
+  --ink: #14171a;
+  --ink-2: #4b5157;
+  --ink-3: #62686f;   /* demo: #858b92 只到 3.44:1，压深到 5.31:1 */
+  --ink-4: #a9aeb4;
+
+  --rule: #e5e3dd;
+  --rule-strong: #cfcdc6;
+
+  --accent: #2f5d50;
+  --accent-ink: #234a40;
+  --accent-wash: #e8efec;
+  --accent-line: #b9cdc6;
+
+  --danger: #a4372c;
+  --danger-wash: #f7e9e7;
+  --warn: #8a5a12;
+  --warn-wash: #f8efe0;
+
+  --up: #b3382c;
+  --down: #2f6b4f;
+
+  --font-sans: "Inter", "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei UI",
+    "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
+  --t-11: 11px; --t-12: 12px; --t-13: 13px;
+  --t-15: 15px; --t-17: 17px; --t-21: 21px; --t-28: 28px;
+
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px;
+  --s-5: 24px; --s-6: 32px; --s-7: 48px;
+
+  --radius-sheet: 16px; --radius: 8px; --radius-s: 6px;
+  --shadow-sheet: 0 1px 2px rgba(20, 23, 26, 0.04), 0 12px 32px -12px rgba(20, 23, 26, 0.14);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-1: 140ms; --dur-2: 240ms; --dur-3: 560ms;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--t-13);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; font-family: var(--font-num); }
+button { font-family: inherit; cursor: pointer; }
+
+/* ============================================================
+   骨架：56 顶栏 + 204 侧栏 + stage
+   ============================================================ */
+.topbar {
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--s-6);
+  border-bottom: 1px solid var(--rule);
+  background: var(--canvas);
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand-name { font-size: var(--t-15); font-weight: 600; letter-spacing: -0.01em; color: var(--accent-ink); }
+.brand-sub { font-size: var(--t-11); color: var(--ink-3); letter-spacing: 0.06em; }
+.topbar-right { display: flex; align-items: center; gap: var(--s-5); font-size: var(--t-12); color: var(--ink-3); }
+
+.body { display: flex; align-items: flex-start; min-height: calc(100vh - 56px); }
+
+.rail {
+  width: 204px; flex: 0 0 204px;
+  padding: var(--s-4) var(--s-3);
+  position: sticky; top: 56px;
+}
+.rail a {
+  display: flex; align-items: center; gap: 10px;
+  height: 36px; padding: 0 10px; margin-bottom: 2px;
+  border-radius: var(--radius-s);
+  color: var(--ink-2); text-decoration: none; font-size: var(--t-13);
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.rail a:hover { background: rgba(20, 23, 26, 0.035); }
+.rail a.on { background: var(--accent-wash); color: var(--accent-ink); font-weight: 500; }
+.rail svg { width: 15px; height: 15px; flex: none; opacity: 0.75; }
+.rail a.on svg { opacity: 1; }
+
+.stage { flex: 1; min-width: 0; }
+.page { max-width: 1180px; margin-inline: auto; padding: var(--s-6) var(--s-6) var(--s-7); }
+
+/* ============================================================
+   页头
+   ============================================================ */
+.page-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--s-5); margin-bottom: var(--s-5);
+}
+.page-title { margin: 0; font-size: var(--t-21); font-weight: 600; letter-spacing: -0.015em; }
+.page-sub { margin: 6px 0 0; font-size: var(--t-13); color: var(--ink-3); }
+.page-meta { display: flex; gap: var(--s-5); text-align: right; }
+.meta-k { font-size: var(--t-11); color: var(--ink-3); letter-spacing: 0.04em; }
+.meta-v { font-size: var(--t-15); color: var(--ink); }
+
+/* ============================================================
+   纸面
+   ============================================================ */
+.sheet {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet);
+  margin-bottom: var(--s-4);
+  overflow: hidden;
+}
+.pane-head {
+  display: flex; align-items: baseline; gap: var(--s-3);
+  padding: 18px var(--s-5) 14px;
+}
+.pane-title { margin: 0; font-size: var(--t-15); font-weight: 600; letter-spacing: -0.01em; }
+.pane-note { font-size: var(--t-12); color: var(--ink-3); }
+
+/* ============================================================
+   结论条 —— 整个页面的第一句话
+   ============================================================ */
+.verdict {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s-5);
+  padding: 18px var(--s-5);
+  background: linear-gradient(90deg, var(--warn-wash), var(--surface) 38%);
+  transition: background var(--dur-3) var(--ease);
+}
+.verdict.is-calm {
+  background: linear-gradient(90deg, var(--accent-wash), var(--surface) 38%);
+}
+.verdict-main { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.verdict-text { font-size: var(--t-17); font-weight: 600; letter-spacing: -0.01em; }
+.verdict-detail { font-size: var(--t-12); color: var(--ink-3); }
+
+.stamp {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-s);
+  color: var(--warn);
+  background: var(--surface);
+  font-size: var(--t-11); font-weight: 600; letter-spacing: 0.14em;
+  transform: rotate(-1.6deg);
+  transition: transform var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease),
+              color var(--dur-2) var(--ease), background var(--dur-2) var(--ease);
+}
+.is-calm .stamp { border-color: var(--accent); color: var(--accent-ink); transform: rotate(0deg); }
+.stamp.pulse { animation: stamp-in 380ms var(--ease); }
+@keyframes stamp-in {
+  0%   { transform: rotate(-6deg) scale(1.14); opacity: 0.2; }
+  60%  { transform: rotate(0.4deg) scale(0.99); opacity: 1; }
+  100% { transform: rotate(-1.6deg) scale(1); }
+}
+.is-calm .stamp.pulse { animation-name: stamp-in-calm; }
+@keyframes stamp-in-calm {
+  0%   { transform: rotate(4deg) scale(1.14); opacity: 0.2; }
+  60%  { transform: rotate(-0.4deg) scale(0.99); opacity: 1; }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+/* ============================================================
+   信号票根
+   ============================================================ */
+.signal {
+  position: relative;
+  display: grid;
+  grid-template-columns: 116px 1fr 208px;
+  gap: var(--s-5);
+  padding: 20px var(--s-5);
+  border-top: 1px solid var(--rule);
+  transition: background var(--dur-1) var(--ease), opacity var(--dur-2) var(--ease);
+}
+.signal:hover { background: rgba(20, 23, 26, 0.022); }
+
+.sig-mark { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.sig-tag {
+  font-size: var(--t-11); font-weight: 600; letter-spacing: 0.06em;
+  padding: 1px 7px; border-radius: 4px;
+  color: var(--warn); background: var(--warn-wash); border: 1px solid #e8d5b5;
+}
+.sig-tag.is-risk { color: var(--danger); background: var(--danger-wash); border-color: #e6c6c2; }
+.sig-pct { font-size: var(--t-13); font-weight: 600; }
+.sig-pct.up { color: var(--up); }
+.sig-pct.down { color: var(--down); }
+
+.sig-body { min-width: 0; }
+.sig-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sig-name { font-size: var(--t-15); font-weight: 600; letter-spacing: -0.01em; }
+.sig-code { font-size: var(--t-11); color: var(--ink-3); letter-spacing: 0.06em; }
+.sig-line {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-top: 6px; font-size: var(--t-12); color: var(--ink-2);
+}
+.sig-line b { font-weight: 600; color: var(--accent-ink); }
+.sig-fail { margin-top: 8px; font-size: var(--t-12); color: var(--ink-3); }
+.sig-fail::before { content: "失效 · "; color: var(--ink-3); }
+
+.sig-act { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 8px; justify-content: center; }
+.btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  height: 32px; border-radius: var(--radius-s); font-size: var(--t-12);
+  border: 1px solid var(--rule-strong); background: var(--surface); color: var(--ink-2);
+  transition: transform var(--dur-1) var(--ease), background var(--dur-1) var(--ease),
+              border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.btn:hover { border-color: var(--ink-4); color: var(--ink); }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover { background: rgba(20, 23, 26, 0.04); }
+
+/* 按钮原地变身：文字纵向翻转 + 底色转淡 + 勾线生长，全程 240ms。
+   只动 transform / opacity / 颜色；勾线是 stroke-dashoffset。 */
+.sig-act { min-height: 72px; }
+
+.sig-act .btn {
+  justify-content: center;
+  overflow: hidden;
+  transition: height 220ms var(--ease), margin 220ms var(--ease),
+              opacity 160ms var(--ease), transform 160ms var(--ease),
+              background 240ms var(--ease), border-color 240ms var(--ease),
+              color 240ms var(--ease);
+}
+
+.btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 220ms var(--ease), opacity 150ms var(--ease);
+}
+
+.btn-label.is-next {
+  position: absolute;
+  inset: 0;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(110%);
+}
+
+.btn.is-done .btn-label,
+.btn.is-snoozed .btn-label {
+  opacity: 0;
+  transform: translateY(-110%);
+}
+
+.btn.is-done .btn-label.is-next,
+.btn.is-snoozed .btn-label.is-next {
+  opacity: 1;
+  transform: translateY(0);
+  transition: transform 220ms var(--ease) 40ms, opacity 180ms var(--ease) 40ms;
+}
+
+.btn.is-done {
+  background: var(--accent-wash);
+  border-color: var(--accent-line);
+  color: var(--accent-ink);
+  pointer-events: none;
+}
+
+.btn.is-snoozed {
+  background: var(--surface-sunken);
+  border-color: var(--rule-strong);
+  color: var(--ink-2);
+  pointer-events: none;
+}
+
+/* 勾线：12×12 的路径边长约 14，dash 走完等于“写”出来 */
+.btn-check {
+  width: 12px; height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  transition: stroke-dashoffset 260ms var(--ease) 110ms;
+}
+.btn.is-done .btn-check { stroke-dashoffset: 0; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* 没被选中的那个收起来，让选择结果独占这一格 */
+.btn.is-gone {
+  height: 0;
+  margin-top: -8px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 纸面吸墨：一次性的浅色覆盖，结束后归零 */
+.signal.is-done::after,
+.signal.is-snoozed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.signal.is-done::after { background: var(--accent-wash); animation: soak 560ms var(--ease) both; }
+.signal.is-snoozed::after { background: rgba(20, 23, 26, 0.05); animation: soak 560ms var(--ease) both; }
+
+@keyframes soak {
+  0%   { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
+.signal.is-done .sig-mark,
+.signal.is-done .sig-body,
+.signal.is-snoozed .sig-mark,
+.signal.is-snoozed .sig-body {
+  opacity: 0.42;
+  transition: opacity 240ms var(--ease);
+}
+
+/* ============================================================
+   台账表
+   ============================================================ */
+.table-wrap { padding: 0 var(--s-5) 4px; }
+table.ledger { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.ledger th {
+  font-size: var(--t-11); font-weight: 500; color: var(--ink-3);
+  letter-spacing: 0.06em; text-align: left;
+  padding: 0 0 9px; border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+.ledger th.c-num, .ledger td.c-num { text-align: right; }
+.ledger td {
+  padding: 13px 0; border-bottom: 1px solid var(--rule);
+  font-size: var(--t-13); vertical-align: middle;
+}
+.ledger tbody tr:last-child td { border-bottom: none; }
+.ledger tbody tr { transition: background var(--dur-1) var(--ease); }
+.ledger tbody tr:hover { background: rgba(20, 23, 26, 0.025); }
+
+.c-name { font-weight: 500; }
+.c-name .code {
+    color: var(--ink-3); display: block; font-size: var(--t-11); color: var(--ink-3); letter-spacing: 0.06em; font-weight: 400; margin-top: 1px; }
+
+.price { font-size: var(--t-15); font-weight: 500; letter-spacing: -0.01em; }
+.price-main { font-size: var(--t-17); font-weight: 600; }
+.delta-up { color: var(--up); }
+.delta-down { color: var(--down); }
+.delta-flat { color: var(--ink-3); }
+
+.stopcell, .tpcell { min-width: 0; }
+.ledger .line { display: block; }
+.cell-sub { display: block; font-size: var(--t-11); color: var(--ink-3); }
+.cell-sub.near { color: var(--danger); }
+
+.tag {
+  white-space: nowrap;
+  display: inline-block; padding: 1px 8px; border-radius: 4px;
+  font-size: var(--t-11); letter-spacing: 0.04em;
+  border: 1px solid var(--rule-strong); color: var(--ink-3); background: var(--surface-sunken);
+}
+.tag.warn { color: var(--warn); border-color: #e8d5b5; background: var(--warn-wash); }
+.tag.risk { color: var(--danger); border-color: #e6c6c2; background: var(--danger-wash); }
+.tag.ok { color: var(--accent-ink); border-color: var(--accent-line); background: var(--accent-wash); }
+
+.foot-note {
+  margin: var(--s-3) 0 0; padding: 0 var(--s-1);
+  font-size: var(--t-12); color: var(--ink-3); line-height: 1.7;
+}
+.foot-note .k { color: var(--ink-2); }
+
+/* ============================================================
+   参考信息（折叠）
+   ============================================================ */
+.ref-btn {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s-4); padding: 15px var(--s-5);
+  background: transparent; border: 0; text-align: left;
+  color: var(--ink-2); font-size: var(--t-13);
+}
+.ref-btn:hover { background: rgba(20, 23, 26, 0.022); }
+.ref-btn .chev { width: 14px; height: 14px; color: var(--ink-4); transition: transform var(--dur-2) var(--ease); }
+.ref-btn[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.ref-panel {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: var(--s-5); padding: 0 var(--s-5);
+  max-height: 0; opacity: 0; overflow: hidden;
+  transition: max-height var(--dur-2) var(--ease), opacity var(--dur-2) var(--ease),
+              padding var(--dur-2) var(--ease);
+}
+.ref-panel.open { max-height: 180px; opacity: 1; padding: 0 var(--s-5) 18px; }
+.ref-k { font-size: var(--t-11); color: var(--ink-3); letter-spacing: 0.04em; }
+.ref-v { font-size: var(--t-13); color: var(--ink); margin-top: 3px; }
+
+.preview-note {
+    color: var(--ink-2);
+  margin: var(--s-5) 0 0; font-size: var(--t-12); color: var(--ink-2);
+}
+
+/* ============================================================
+   进场：整页 6px 上浮 + 票根错开 40ms（沿用路由切换的缓动）
+   ============================================================ */
+.page > * {
+  opacity: 0; transform: translateY(6px);
+  transition: opacity var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
+}
+.is-ready .page > * { opacity: 1; transform: none; }
+.is-ready .page > *:nth-child(2) { transition-delay: 40ms; }
+.is-ready .page > *:nth-child(3) { transition-delay: 80ms; }
+.is-ready .page > *:nth-child(4) { transition-delay: 120ms; }
+.is-ready .page > *:nth-child(5) { transition-delay: 160ms; }
+.is-ready .page > *:nth-child(6) { transition-delay: 200ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 1ms !important;
+    animation: none !important;
+  }
+  .page > * { opacity: 1; transform: none; }
+}
+
+/* 1180 以下：纸边收窄，动作列略压 */
+@media (max-width: 1180px) {
+  .page { padding: var(--s-5) var(--s-5) var(--s-7); }
+  .signal { grid-template-columns: 104px 1fr 186px; }
+}
+
+/* 1080 以下：信号卡变两段——正文在上，按钮横排落在右下 */
+@media (max-width: 1080px) {
+  .signal { grid-template-columns: 96px 1fr; row-gap: 14px; }
+  .sig-act {
+    grid-column: 2;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 0;
+  }
+  .sig-act .btn { width: auto; padding: 0 20px; }
+  .btn.is-gone { height: 32px; margin-top: 0; padding: 0 20px; border-width: 1px; opacity: 0; width: 0; padding-left: 0; padding-right: 0; }
+  .ref-panel { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 900 以下：侧栏改成顶部横向条，给正文让出整幅宽度 */
+@media (max-width: 900px) {
+  .body { display: block; }
+  .rail {
+    position: sticky; top: 0; z-index: 5;
+    width: auto; flex: none;
+    display: flex; gap: 4px; overflow-x: auto;
+    padding: 8px 20px;
+    background: var(--canvas);
+    border-bottom: 1px solid var(--rule);
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail a { margin-bottom: 0; white-space: nowrap; flex: none; height: 34px; }
+  .page { max-width: none; padding: 24px 20px 48px; }
+  .page-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .page-meta { text-align: left; gap: var(--s-5); }
+}
+
+/* 820 以下：账表不再横向挤，改成一行一只的“竖版条”（iPad 竖屏也走这套） */
+@media (max-width: 820px) {
+  .ledger, .ledger tbody, .ledger tr, .ledger td { display: block; width: auto; }
+  .ledger colgroup, .ledger thead { display: none; }
+  .ledger tr {
+    padding: 16px 0 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ledger tr:last-child { border-bottom: 0; }
+  .ledger td { border: 0; padding: 0; }
+  .ledger td.c-name { padding-bottom: 10px; font-size: 14px; }
+  .ledger td.c-name .code { font-size: 11px; margin-left: 8px; }
+  .ledger td.c-num {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 4px 0; text-align: right;
+  }
+  .ledger td.c-num::before {
+    content: attr(data-label);
+    font-size: var(--t-11); letter-spacing: 0.06em; color: var(--ink-3);
+    font-family: var(--font-sans); flex: none;
+  }
+  .ledger td.stopcell .price,
+  .ledger td.tpcell .price { margin-left: auto; }
+  .ledger td.stopcell .cell-sub,
+  .ledger td.tpcell .cell-sub {
+    display: inline; flex: none; width: 46px;
+    margin-left: 10px; text-align: right;
+  }
+  .ledger td[data-label="状态"] { padding-top: 8px; }
+  .ledger-foot { padding-top: 14px; }
+  .pane-head { flex-wrap: wrap; row-gap: 4px; }
+}
+
+/* 561–820：平板竖屏，账表改双列，避免每行横跨整幅显得空 */
+@media (min-width: 561px) and (max-width: 820px) {
+  .ledger tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 36px; }
+  .ledger tr { border-bottom: 1px solid var(--rule); }
+  .ledger tr:nth-child(odd) { padding-right: 4px; }
+}
+
+/* 560 以下：信号卡单列，印章落到结论条下方；按钮均分，触控高度 40 */
+@media (max-width: 560px) {
+  .signal { grid-template-columns: 1fr; row-gap: 10px; }
+  .sig-mark { flex-direction: row; align-items: baseline; gap: 10px; }
+  .sig-act { grid-column: 1 / -1; justify-content: stretch; }
+  .sig-act .btn { flex: 1 1 0; height: 40px; padding: 0 12px; }
+  .btn.is-gone { height: 0; width: auto; padding: 0; border-width: 0; margin-top: -8px; }
+  .verdict-main { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .stamp { transform: none; }
+  .verdict { padding: 18px; }
+  .page-title { font-size: var(--t-21); }
+  .page-meta { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-name">StockAI</span>
+    <span class="brand-sub">持仓台账</span>
+  </div>
+  <div class="topbar-right">
+    <span>Moon</span>
+    <span>管理员</span>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="rail">
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      总览
+    </a>
+    <a href="#" class="on">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+      今日决策
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V5m0 14h16"/><path d="M8 15l3.2-4 3 2.4L20 7"/></svg>
+      股票
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 17l5-6 4 3 4-6 5 5"/><path d="M3 21h18"/></svg>
+      市场
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      交易计划
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.6a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4z"/></svg>
+      配置
+    </a>
+  </nav>
+
+  <main class="stage">
+    <div class="page">
+
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">今日决策</h1>
+          <p class="page-sub">开盘前看一眼：今天要不要动手，动哪只，动多少。</p>
+        </div>
+        <div class="page-meta">
+          <div>
+            <div class="meta-k">数据截至</div>
+            <div class="meta-v num">11-07 收盘</div>
+          </div>
+          <div>
+            <div class="meta-k">持仓</div>
+            <div class="meta-v num">6 只</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 结论条 -->
+      <section class="sheet verdict" id="verdict">
+        <div class="verdict-main">
+          <span class="stamp" id="stamp">需处理</span>
+          <div>
+            <div class="verdict-text" id="verdictText">今天有 2 件事需要你处理</div>
+            <div class="verdict-detail" id="verdictDetail">其余 4 只都在纪律区间内，不用看。</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 信号 -->
+      <section class="sheet">
+        <div class="pane-head">
+          <h2 class="pane-title">需要处理</h2>
+          <span class="pane-note" id="sigNote">只列需要你决策的，没命中就不会出现在这里</span>
+        </div>
+
+        <article class="signal" data-sig>
+          <div class="sig-mark">
+            <span class="sig-tag">止盈一档</span>
+            <span class="sig-pct up num">+48.5%</span>
+          </div>
+          <div class="sig-body">
+            <div class="sig-title">
+              <span class="sig-name">科创芯片ETF</span>
+              <span class="sig-code num">588200</span>
+            </div>
+            <div class="sig-line">
+              <span>触发 <b class="num">0.772</b></span>
+              <span class="num" style="color:var(--ink-3)">现价 0.882</span>
+            </div>
+            <div class="sig-line" style="margin-top:10px">
+              <span style="font-size:var(--t-15);font-weight:600;color:var(--ink)">卖 100 股（初始仓位的 1/3）</span>
+            </div>
+            <div class="sig-fail">当前不执行，下一档 0.950（成本 × 1.60）再提示</div>
+          </div>
+          <div class="sig-act">
+            <span class="sr-only" role="status" aria-live="polite"></span><button class="btn primary" data-ack="done"><span class="btn-label">确认已执行</span><span class="btn-label is-next"><svg class="btn-check" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.4 L4.9 9.3 L10 3.2"/></svg>已执行</span></button>
+            <span class="sr-only" role="status" aria-live="polite"></span><button class="btn" data-ack="snooze"><span class="btn-label">暂不处理</span><span class="btn-label is-next">已搁置</span></button>
+                      </div>
+        </article>
+
+        <article class="signal" data-sig>
+          <div class="sig-mark">
+            <span class="sig-tag is-risk">接近止损</span>
+            <span class="sig-pct down num">−15.5%</span>
+          </div>
+          <div class="sig-body">
+            <div class="sig-title">
+              <span class="sig-name">中韩半导体ETF</span>
+              <span class="sig-code num">513310</span>
+            </div>
+            <div class="sig-line">
+              <span>触发 <b class="num" style="color:var(--danger)">3.231</b></span>
+              <span class="num" style="color:var(--ink-3)">现价 3.640</span>
+            </div>
+            <div class="sig-line" style="margin-top:10px">
+              <span style="font-size:var(--t-15);font-weight:600;color:var(--ink)">暂不操作，跌到 3.231 全部卖出</span>
+            </div>
+            <div class="sig-fail">若反弹回成本上方，本条自动消失</div>
+          </div>
+          <div class="sig-act">
+            <span class="sr-only" role="status" aria-live="polite"></span><button class="btn primary" data-ack="done"><span class="btn-label">确认已执行</span><span class="btn-label is-next"><svg class="btn-check" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.4 L4.9 9.3 L10 3.2"/></svg>已执行</span></button>
+            <span class="sr-only" role="status" aria-live="polite"></span><button class="btn" data-ack="snooze"><span class="btn-label">暂不处理</span><span class="btn-label is-next">已搁置</span></button>
+                      </div>
+        </article>
+      </section>
+
+      <!-- 持仓纪律 -->
+      <section class="sheet">
+        <div class="pane-head">
+          <h2 class="pane-title">持仓纪律</h2>
+          <span class="pane-note">止损价 / 止盈线由系统算出，括号内是距现价还有多远</span>
+        </div>
+        <div class="table-wrap">
+          <table class="ledger">
+            <colgroup>
+              <col style="width:25%" />
+              <col style="width:11%" />
+              <col style="width:11%" />
+              <col style="width:10%" />
+              <col style="width:15%" />
+              <col style="width:15%" />
+              <col style="width:13%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="c-name">标的</th>
+                <th class="c-num">现价</th>
+                <th class="c-num">成本</th>
+                <th class="c-num">浮动</th>
+                <th class="c-num">止损价</th>
+                <th class="c-num">止盈线</th>
+                <th class="c-num">状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-name">科创芯片ETF<span class="code num">588200</span></td>
+                <td class="c-num" data-label="现价"><span class="num price price-main">0.882</span></td>
+                <td class="c-num" data-label="成本"><span class="num" style="color:var(--ink-3)">0.594</span></td>
+                <td class="c-num" data-label="浮动"><span class="num delta-up">+48.5%</span></td>
+                <td class="c-num stopcell" data-label="止损价">
+                  <span class="num price">0.505</span>
+                  <span class="cell-sub num">−43%</span>
+                </td>
+                <td class="c-num tpcell" data-label="止盈线">
+                  <span class="num price">0.950</span>
+                  <span class="cell-sub num">+8%</span>
+                </td>
+                <td class="c-num" data-label="状态"><span class="tag warn">止盈一档已触发</span></td>
+              </tr>
+              <tr>
+                <td class="c-name">红利ETF易方达<span class="code num">515180</span></td>
+                <td class="c-num" data-label="现价"><span class="num price price-main">1.353</span></td>
+                <td class="c-num" data-label="成本"><span class="num" style="color:var(--ink-3)">1.336</span></td>
+                <td class="c-num" data-label="浮动"><span class="num delta-up">+1.3%</span></td>
+                <td class="c-num stopcell" data-label="止损价">
+                  <span class="num price">1.136</span>
+                  <span class="cell-sub num">−16%</span>
+                </td>
+                <td class="c-num tpcell" data-label="止盈线">
+                  <span class="num price">1.737</span>
+                  <span class="cell-sub num">+28%</span>
+                </td>
+                <td class="c-num" data-label="状态"><span class="tag">正常</span></td>
+              </tr>
+              <tr>
+                <td class="c-name">东鹏饮料<span class="code num">605499</span></td>
+                <td class="c-num" data-label="现价"><span class="num price price-main">112.00</span></td>
+                <td class="c-num" data-label="成本"><span class="num" style="color:var(--ink-3)">107.05</span></td>
+                <td class="c-num" data-label="浮动"><span class="num delta-up">+4.6%</span></td>
+                <td class="c-num stopcell" data-label="止损价">
+                  <span class="num price">80.290</span>
+                  <span class="cell-sub num">−28%</span>
+                </td>
+                <td class="c-num tpcell" data-label="止盈线">
+                  <span class="num price">139.17</span>
+                  <span class="cell-sub num">+24%</span>
+                </td>
+                <td class="c-num" data-label="状态"><span class="tag">正常</span></td>
+              </tr>
+              <tr>
+                <td class="c-name">分众传媒<span class="code num">002027</span></td>
+                <td class="c-num" data-label="现价"><span class="num price price-main">5.460</span></td>
+                <td class="c-num" data-label="成本"><span class="num" style="color:var(--ink-3)">5.245</span></td>
+                <td class="c-num" data-label="浮动"><span class="num delta-up">+4.1%</span></td>
+                <td class="c-num stopcell" data-label="止损价">
+                  <span class="num price">3.930</span>
+                  <span class="cell-sub num">−28%</span>
+                </td>
+                <td class="c-num tpcell" data-label="止盈线">
+                  <span class="num price">6.820</span>
+                  <span class="cell-sub num">+25%</span>
+                </td>
+                <td class="c-num" data-label="状态"><span class="tag">正常</span></td>
+              </tr>
+              <tr>
+                <td class="c-name">中韩半导体ETF<span class="code num">513310</span></td>
+                <td class="c-num" data-label="现价"><span class="num price price-main">3.640</span></td>
+                <td class="c-num" data-label="成本"><span class="num" style="color:var(--ink-3)">4.308</span></td>
+                <td class="c-num" data-label="浮动"><span class="num delta-down">−15.5%</span></td>
+                <td class="c-num stopcell" data-label="止损价">
+                  <span class="num price" style="color:var(--danger)">3.231</span>
+                  <span class="cell-sub near num">−11%</span>
+                </td>
+                <td class="c-num tpcell" data-label="止盈线">
+                  <span class="num price">5.600</span>
+                  <span class="cell-sub num">+54%</span>
+                </td>
+                <td class="c-num" data-label="状态"><span class="tag risk">警戒</span></td>
+              </tr>
+              <tr>
+                <td class="c-name">纳指ETF<span class="code num">513100</span></td>
+                <td class="c-num" data-label="现价"><span class="num price price-main">2.158</span></td>
+                <td class="c-num" data-label="成本"><span class="num" style="color:var(--ink-3)">1.800</span></td>
+                <td class="c-num" data-label="浮动"><span class="num delta-up">+19.9%</span></td>
+                <td class="c-num stopcell" data-label="止损价">
+                  <span class="num price">1.440</span>
+                  <span class="cell-sub num">−33%</span>
+                </td>
+                <td class="c-num tpcell" data-label="止盈线">
+                  <span class="num price">2.340</span>
+                  <span class="cell-sub num">+8%</span>
+                </td>
+                <td class="c-num" data-label="状态"><span class="tag">正常</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="foot-note">
+          <span class="k">止损价</span> = 成本 ×（1 − 硬止损比例）；ETF 按 60 日波动率分档（15% / 20% / 25%），个股 25%，高波动放宽 30%。
+          <span class="k">止盈线</span> = 未武装时显示下一档止盈价；武装后显示移动止损 max(峰值 × 0.85, 成本 × 1.10)。
+        </p>
+      </section>
+
+      <!-- 参考信息 -->
+      <section class="sheet">
+        <button class="ref-btn" id="refBtn" aria-expanded="false" aria-controls="refPanel">
+          <span>参考信息 · 市场状态、热点、周报 —— 判定时已经算进去了，这里只是背景</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <div class="ref-panel" id="refPanel">
+          <div><div class="ref-k">市场状态</div><div class="ref-v">震荡 · 中性</div></div>
+          <div><div class="ref-k">热点集中度</div><div class="ref-v num">物联网 54</div></div>
+          <div><div class="ref-k">组合回撤</div><div class="ref-v num">−3.2%</div></div>
+          <div><div class="ref-k">上次周报</div><div class="ref-v num">11-02</div></div>
+        </div>
+      </section>
+
+      <p class="preview-note">视觉稿 · 数据为示例。确认后再接 GET /exit/overview。</p>
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var body = document.body;
+
+  // 进场：等一帧再加 is-ready，保证 transition 生效
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () { body.classList.add('is-ready'); });
+  });
+
+  // 信号处理 -> 更新结论条
+  var sigs = Array.prototype.slice.call(document.querySelectorAll('[data-sig]'));
+  var verdict = document.getElementById('verdict');
+  var stamp = document.getElementById('stamp');
+  var vText = document.getElementById('verdictText');
+  var vDetail = document.getElementById('verdictDetail');
+  var sigNote = document.getElementById('sigNote');
+  var HOLDINGS = 6;
+
+  function doneCount() {
+    return sigs.filter(function (s) {
+      return s.classList.contains('is-done') || s.classList.contains('is-snoozed');
+    }).length;
+  }
+
+  function pulseStamp() {
+    stamp.classList.remove('pulse');
+    void stamp.offsetWidth;
+    stamp.classList.add('pulse');
+  }
+
+  function refresh() {
+    var total = sigs.length;
+    var handled = doneCount();
+    if (handled >= total) {
+      verdict.classList.add('is-calm');
+      stamp.textContent = '无需操作';
+      vText.textContent = '今天不用动';
+      vDetail.textContent = '信号都处理过了，下一次判定是明天 17:30。';
+    } else {
+      verdict.classList.remove('is-calm');
+      stamp.textContent = '需处理';
+      vText.textContent = '今天有 ' + (total - handled) + ' 件事需要你处理';
+      vDetail.textContent = handled > 0
+        ? '已处理 ' + handled + ' 条 · 其余持仓都在纪律区间内'
+        : '其余 ' + (HOLDINGS - total) + ' 只都在纪律区间内，不用看';
+    }
+    sigNote.textContent = handled >= total
+      ? '今天的信号都处理完了，明天再看'
+      : '只列需要你决策的，没命中就不会出现在这里';
+    pulseStamp();
+  }
+
+  sigs.forEach(function (row) {
+    row.querySelectorAll('[data-ack]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var kind = btn.getAttribute('data-ack');
+        var cls = kind === 'snooze' ? 'is-snoozed' : 'is-done';
+        btn.classList.add(cls);
+        row.classList.add(cls);
+        var live = row.querySelector('.sr-only');
+        if (live) { live.textContent = kind === 'snooze' ? '已搁置，明天再提' : '已确认执行'; }
+        row.querySelectorAll('.btn').forEach(function (b) {
+          if (b !== btn) { b.classList.add('is-gone'); }
+          b.disabled = true;
+        });
+        refresh();
+      });
+    });
+  });
+
+  // 参考信息折叠
+  var refBtn = document.getElementById('refBtn');
+  var refPanel = document.getElementById('refPanel');
+  refBtn.addEventListener('click', function () {
+    var open = refBtn.getAttribute('aria-expanded') === 'true';
+    refBtn.setAttribute('aria-expanded', String(!open));
+    refPanel.classList.toggle('open', !open);
+  });
+
+  // 预览用：?demo=done / ?demo=snooze 直接落在处理后的状态，便于静态截图
+  if (location.search.indexOf('demo=done') > -1) {
+    var d = document.querySelector('[data-ack="done"]');
+    if (d) { d.click(); }
+  } else if (location.search.indexOf('demo=snooze') > -1) {
+    var z = document.querySelector('[data-ack="snooze"]');
+    if (z) { z.click(); }
+  }
+
+  if (location.search.indexOf('calm') > -1) {
+    sigs.forEach(function (s) { s.classList.add('is-done'); });
+    refresh();
+  }
+})();
+</script>
+</body>
+</html>

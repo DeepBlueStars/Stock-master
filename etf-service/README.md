@@ -131,6 +131,8 @@ python -m app.tasks.backfill_kline --kind etf --full --ensure-index --prune-orph
 
 - **每日 16:20**（`update_kline_incremental`，交易日）：只补**关注池**——`position`、`trade_plans`、
   `user_favorites` 里出现的标的，按 ETF / 个股分开跑增量（`--full` 关闭）。现库 12 只，约 30 秒。
+- **每日 19:30**（`update_kline_incremental_late`，交易日）：同一任务再跑一轮。新浪日线在 16:20 时
+  往往还没发布当日数据，不补这一轮的话当日行会一直停留在凌晨快照写入的「昨收」。
 - **每周六 02:00**（`update_kline_weekly_sweep`，全量）：把全市场 1720 只 ETF + 720 只个股各扫一遍。
   2440 只逐个请求要一个多小时，放在周末凌晨才不会和 17:30 的止盈止损判定抢时间。
 
@@ -141,6 +143,8 @@ python -m app.tasks.backfill_kline --kind etf --full --ensure-index --prune-orph
 - `etf_daily_quotes` / `stock_daily_kline` 的**权威写入方是回填服务**（完整 OHLC，成交量按「股」）。
 - 30 分钟一次的实时快照任务只做 **insert-if-absent**：当日已有行就跳过，绝不覆盖回填结果。
   否则快照会把盘中的 `open/high/low`（含 0 值）盖到收盘后的真实日线上。
+- 写库时间统一用 `utc_now()`（带 UTC 时区）；`beijing_now()` 只用于「今天是哪个交易日」这类日期判断。
+  naive 本地时间入库会被 pymongo 当作 UTC 原样存储，读端再按 +08:00 展示就会整体偏 8 小时。
 - 手工补历史仍用上一节的 CLI；日常运维不需要手动执行。
 
 

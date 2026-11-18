@@ -1,8 +1,7 @@
 import logging
-from datetime import datetime
 from typing import List, Optional
 
-from ..normalize.schema import DailyQuote, to_float, to_date, row_get, to_market_symbol
+from ..normalize.schema import DailyQuote, beijing_now, to_float, to_date, row_get, to_market_symbol, utc_now
 from .base import DataSource
 
 logger = logging.getLogger(__name__)
@@ -25,13 +24,13 @@ class EastmoneySinaSource(DataSource):
 
     def fetch_index_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
         start = self._norm_date(start_date or "1990-01-01")
-        end = datetime.now().strftime("%Y-%m-%d")
+        end = beijing_now().strftime("%Y-%m-%d")
         df = self.ak.stock_zh_index_daily(symbol=to_market_symbol(code))
         if df is None or df.empty:
             return None
         df["date"] = df["date"].astype(str)
         df = df[(df["date"] >= start) & (df["date"] <= end)]
-        now = datetime.now()
+        now = utc_now()
         out = []
         for _, r in df.iterrows():
             out.append(DailyQuote(
@@ -51,11 +50,11 @@ class EastmoneySinaSource(DataSource):
 
     def fetch_stock_daily(self, code: str, start_date: Optional[str] = None) -> Optional[List[dict]]:
         start = (start_date or "1990-01-01")[:10]
-        end = datetime.now().strftime("%Y-%m-%d")
+        end = beijing_now().strftime("%Y-%m-%d")
         df = self.ak.stock_zh_a_daily(symbol=to_market_symbol(code), start_date=start, end_date=end, adjust="")
         if df is None or df.empty:
             return None
-        now = datetime.now()
+        now = utc_now()
         out = []
         for _, r in df.iterrows():
             out.append(DailyQuote(
@@ -83,7 +82,7 @@ class EastmoneySinaSource(DataSource):
         df = self.ak.fund_etf_hist_sina(symbol=to_market_symbol(code))
         if df is None or df.empty:
             return None
-        now = datetime.now()
+        now = utc_now()
         out = []
         for _, r in df.iterrows():
             trade_date = to_date(row_get(r, "date"))

@@ -148,6 +148,7 @@ def test_sync_stock_daily_from_market_quotes_maps_snapshot(monkeypatch):
     mod = import_module("app.services.stock_service")
     now = datetime(2026, 10, 30, 16, 0)
     monkeypatch.setattr(mod, "beijing_now", lambda: now)
+    monkeypatch.setattr(mod, "utc_now", lambda: now)
     svc = StockService(mongo=_MarketQuoteMongo([_market_quote()]))
 
     n = svc.sync_stock_daily_from_market_quotes()

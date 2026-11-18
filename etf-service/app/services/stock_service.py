@@ -7,7 +7,7 @@ from typing import List, Optional
 from ..datasource import get_source_chain
 from ..datasource.base import fetch_with_fallback
 from ..database.mongo import mongo_client
-from ..normalize.schema import beijing_now, to_date, to_float
+from ..normalize.schema import beijing_now, to_date, to_float, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class StockService:
     def update_stock_daily_incremental(self) -> int:
         """按日增量更新个股K线，仅补缺失交易日（upsert 去重）。"""
         total = 0
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = beijing_now().strftime("%Y-%m-%d")
         for symbol in self._pool():
             start_date = self._incremental_start_date(symbol)
             if start_date > today:
@@ -143,8 +143,8 @@ class StockService:
         """把 market_quotes 当日快照复制到 stock_daily_kline；无当日数据时回退数据源拉取。"""
         getter = getattr(self.mongo, "get_market_quotes", None)
         quotes = getter() if getter is not None else []
-        now = beijing_now()
-        today = now.strftime("%Y-%m-%d")
+        now = utc_now()
+        today = beijing_now().strftime("%Y-%m-%d")
         records = {}
         for doc in quotes or []:
             record = self._market_quote_record(doc, now)
