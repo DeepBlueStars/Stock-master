@@ -140,14 +140,6 @@ public class ResearchService {
         return Result.success();
     }
 
-    /**
-     * 本周是否已有外部写入的组合报告：有就跳过系统周报，避免两份周报打架
-     */
-    public boolean hasPortfolioReportSince(String userId, LocalDate date) {
-        return reportRepository.existsByUserIdAndTypeAndReportDateGreaterThanEqual(
-                userId, ResearchReport.TYPE_PORTFOLIO, date);
-    }
-
     /* ---------------- 复核线 ---------------- */
 
     public Result<ReviewLevel> saveReviewLevel(String userId, ReviewLevel request) {

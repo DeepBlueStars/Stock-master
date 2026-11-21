@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import dayjs from 'dayjs'
 import config from '@/config/config'
@@ -7,6 +8,7 @@ import { renderMarkdown } from '@/utils/markdown'
 
 const BASE_URL = config.baseUrl
 const USER_ID = '6928fca14f206ada1b7a9269'
+const router = useRouter()
 
 const TYPE_LABELS = {
   PORTFOLIO: '组合',
@@ -34,6 +36,12 @@ const detail = ref(null)
 const loading = ref(false)
 const loadingDetail = ref(false)
 const error = ref('')
+const focusMap = ref({})
+
+const activeFocus = computed(() => {
+  const symbol = detail.value?.symbol
+  return symbol ? focusMap.value[symbol] || null : null
+})
 
 const latestDate = computed(() => {
   if (!reports.value.length) return '—'
@@ -106,11 +114,41 @@ function pickType(value) {
   loadReports()
 }
 
+async function loadFocusPool() {
+  try {
+    const response = await axios.post(`${BASE_URL}/research/focus/list`, { userId: USER_ID })
+    if (response.data && response.data.state === 0) {
+      const map = {}
+      for (const view of response.data.data || []) {
+        if (view?.profile?.symbol) {
+          map[view.profile.symbol] = view
+        }
+      }
+      focusMap.value = map
+    }
+  } catch (e) {
+    console.error('读取关注档案失败', e)
+  }
+}
+
+function isFocused(report) {
+  return Boolean(report?.symbol && focusMap.value[report.symbol])
+}
+
+function openFocus() {
+  const symbol = detail.value?.symbol
+  if (!symbol || !focusMap.value[symbol]) return
+  router.push({ path: '/review', query: { symbol } })
+}
+
 function formatDate(value, pattern = 'YYYY-MM-DD') {
   return value ? dayjs(value).format(pattern) : '—'
 }
 
-onMounted(loadReports)
+onMounted(() => {
+  loadReports()
+  loadFocusPool()
+})
 </script>
 
 <template>
@@ -171,6 +209,7 @@ onMounted(loadReports)
                 <span v-if="report.rating" class="rating num">{{ report.rating }}</span>
                 <span class="kind">{{ TYPE_LABELS[report.type] || report.type }}</span>
                 <span class="src">{{ SOURCE_LABELS[report.source] || report.source }}</span>
+                <span v-if="isFocused(report)" class="in-focus">已在关注池</span>
               </span>
             </span>
           </button>
@@ -189,6 +228,9 @@ onMounted(loadReports)
               <span v-if="detail.rating" class="rating num">{{ detail.rating }}</span>
               <span class="kind">{{ TYPE_LABELS[detail.type] || detail.type }}</span>
               <span v-for="tag in detail.tags || []" :key="tag" class="tag">{{ tag }}</span>
+              <button v-if="activeFocus" type="button" class="focus-link" @click="openFocus">
+                打开关注档案
+              </button>
             </div>
             <p v-if="detail.summary" class="reader-sum">{{ detail.summary }}</p>
           </header>
@@ -345,6 +387,31 @@ onMounted(loadReports)
   border: 1px solid var(--rule);
   border-radius: 999px;
   padding: 1px 7px;
+}
+
+.in-focus {
+  font-size: var(--t-11);
+  color: var(--accent);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-wash);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.focus-link {
+  border: 1px solid var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-size: var(--t-11);
+  border-radius: 999px;
+  padding: 2px 9px;
+  cursor: pointer;
+}
+
+.focus-link:hover {
+  background: var(--accent);
+  color: var(--surface);
 }
 
 .reader {

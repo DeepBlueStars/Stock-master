@@ -104,7 +104,7 @@ class KlineBackfillService:
     # ---------- 标的全集 ----------
 
     def focus_symbols(self, kind: str) -> List[str]:
-        """当日真正需要最新收盘价的标的：持仓 + 交易计划 + 自选股。
+        """当日真正需要最新收盘价的标的：持仓 + 交易计划 + 关注池。
 
         全市场 2440 只逐个请求要一个多小时，会跨过 17:30 的止盈止损判定时点；
         而判定只发生在持仓上，所以每日增量只需要这一小撮，全量刷新交给周末。
@@ -134,7 +134,7 @@ class KlineBackfillService:
             return list(symbols)
         if kind == KIND_ETF:
             return self.mongo.get_etf_symbols()
-        # 个股范围：指数成分股（沪深300/中证500）+ 已有K线 + 持仓 + 交易计划
+        # 个股范围：指数成分股（沪深300/中证500）+ 已有K线 + 持仓 + 交易计划 + 关注池
         # 持仓/交易计划里可能混着 ETF，按品种分流掉
         found = set(self.mongo.stock_daily_kline.distinct("symbol"))
         symbol_sources = ("index_constituents", "position", "trade_plans")

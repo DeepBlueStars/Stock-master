@@ -81,7 +81,7 @@ stockai:
     # MCP 工具未传 userId 时使用的默认用户（与 StockAI-Console 当前用户一致）
     default-user-id: "6928fca14f206ada1b7a9269"
 
-# 交易计划：ATR 参数、批次档位与周报配置
+# 交易计划：ATR 参数、批次档位
 trade-plan:
   atr-period: 14
   stop-atr-multiplier: 2.0
@@ -92,9 +92,6 @@ trade-plan:
   min-kline-count: 15
   degraded-stop-loss-rate: 0.05
   degraded-take-profit-rate: 0.10
-  summary-retention-weeks: 12
-  # 周六 18:00 生成；本周若已有 OpenClaw 写入的组合报告则跳过
-  summary-cron: "0 0 18 ? * SAT"
 # 卖出纪律：L1 硬止损 / L2 移动止盈 / L4 分批止盈
 # 判定时点放在 17:30，等 etf-service 16:00~16:20 的日线任务先落库
 exit:

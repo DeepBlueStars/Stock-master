@@ -42,7 +42,7 @@ public class ResearchMcpTools {
 
     @Tool(name = "save_research_report",
             description = "保存一份研究报告（Markdown 正文，一次性传整份）。组合体检报告 type 填 PORTFOLIO，个股填 STOCK，行业填 INDUSTRY。"
-                    + "不要另传摘要：报告开头就是总结，系统会自动截取正文第一段作为列表摘要。"
+                    + "个股报告建议传 summary（1-2 句投资结论），否则系统会截取正文第一段，可能取到「信息丰富度」而不是结论。"
                     + "reportDate 是报告的业务日期（yyyy-MM-dd），周报去重按它判断，组合报告请务必传当天日期。")
     public Result<ResearchReport> saveResearchReport(
             @ToolParam(required = false, description = "用户ID，不填则使用服务端默认用户") String userId,
@@ -54,7 +54,8 @@ public class ResearchMcpTools {
             @ToolParam(required = false, description = "统计区间结束日 yyyy-MM-dd") String periodEnd,
             @ToolParam(required = false, description = "评级，如 B+") String rating,
             @ToolParam(required = false, description = "标签，逗号分隔") String tagsCsv,
-            @ToolParam(required = false, description = "个股代码，组合/行业报告留空") String symbol) {
+            @ToolParam(required = false, description = "个股代码，组合/行业报告留空") String symbol,
+            @ToolParam(required = false, description = "列表摘要，1-2 句结论；个股报告建议传，留空则从正文推导") String summary) {
         String uid = resolveUserId(userId);
         if (uid == null) {
             return Result.fail("用户ID不能为空");
@@ -63,6 +64,7 @@ public class ResearchMcpTools {
         request.setType(type);
         request.setTitle(title);
         request.setContent(content);
+        request.setSummary(summary);
         request.setRating(rating);
         request.setSymbol(symbol);
         request.setSource(ResearchReport.SOURCE_OPENCLAW);

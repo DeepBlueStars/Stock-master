@@ -39,6 +39,10 @@ public class MonitorEvent {
     public static final String CATEGORY_DIVIDEND = "分红回购";
     public static final String CATEGORY_INDEX = "指数调整";
     public static final String CATEGORY_CONSUMPTION = "消费数据";
+    /**
+     * 个股关注档案里的监测项，由 save_focus_stock 自动同步
+     */
+    public static final String CATEGORY_STOCK = "个股监测";
     public static final String CATEGORY_OTHER = "其他";
 
     @Id

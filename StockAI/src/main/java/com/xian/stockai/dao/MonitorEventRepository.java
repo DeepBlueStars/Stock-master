@@ -18,4 +18,9 @@ public interface MonitorEventRepository extends MongoRepository<MonitorEvent, St
     List<MonitorEvent> findByReportId(String reportId);
 
     void deleteByReportId(String reportId);
+
+    /**
+     * 覆盖个股监测项时只删待处理的，已完成的事件留作复盘
+     */
+    void deleteByUserIdAndSymbolAndCategoryAndStatus(String userId, String symbol, String category, String status);
 }

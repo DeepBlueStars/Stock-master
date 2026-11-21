@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import * as echarts from 'echarts';
 import { Top, Bottom, Plus, Minus, Delete, TrendCharts, Document, Histogram, Bell } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
@@ -14,6 +15,22 @@ const BASE_URL = config.baseUrl;
 
 // 股票数据 - 从API获取
 const stockData = ref([]);
+
+const router = useRouter();
+
+// 关注池（含还没有关注档案的股票）
+const focusStocks = ref([]);
+const focusLoading = ref(false);
+const focusError = ref('');
+
+const FOCUS_STATUS_LABELS = {
+  WATCHING: '关注中',
+  TRIGGERED: '已触发',
+  HOLDING: '已建仓',
+  PAUSED: '已暂停',
+  DROPPED: '已放弃',
+  CLOSED: '已归档'
+};
 
 // 收益曲线数据
 const profitChartData = ref({
@@ -499,12 +516,74 @@ function updateProfitChart() {
   }
 }
 
+// 获取关注池
+async function fetchFocusPool() {
+  focusLoading.value = true;
+  focusError.value = '';
+  try {
+    const response = await axios.post(`${BASE_URL}/research/focus/pool`, {
+      userId: '6928fca14f206ada1b7a9269'
+    });
+    if (response.data && response.data.state === 0) {
+      focusStocks.value = response.data.data || [];
+    } else {
+      focusError.value = response.data?.message || '读取关注池失败';
+    }
+  } catch (error) {
+    focusError.value = error?.message || '网络错误';
+  } finally {
+    focusLoading.value = false;
+  }
+}
+
+function focusStatusLabel(row) {
+  if (!row?.profile) return '仅关注';
+  return FOCUS_STATUS_LABELS[row.profile.status] || row.profile.status;
+}
+
+// 当前还没走完的第一档，与复核台口径一致
+function focusTier(row) {
+  const tiers = row?.profile?.buyPlan?.tiers || [];
+  const usable = tiers
+    .filter((tier) => tier && tier.priceHigh != null)
+    .sort((a, b) => (a.tier || 0) - (b.tier || 0));
+  return usable.find((tier) => tier.status !== 'DONE' && tier.status !== 'CANCELLED') || usable[0] || null;
+}
+
+function focusBuyRange(row) {
+  const tier = focusTier(row);
+  if (!tier) return '—';
+  const low = tier.priceLow != null ? Number(tier.priceLow) : null;
+  const high = tier.priceHigh != null ? Number(tier.priceHigh) : null;
+  if (low !== null && high !== null) return `${low} – ${high}`;
+  if (high !== null) return `≤ ${high}`;
+  return '—';
+}
+
+function focusPrice(row) {
+  return row?.price == null ? '—' : `¥ ${Number(row.price).toFixed(2)}`;
+}
+
+function focusDistance(row) {
+  if (row?.distanceToTier1Pct == null) return '—';
+  const value = Number(row.distanceToTier1Pct);
+  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+}
+
+function openFocusProfile(row) {
+  if (!row?.profile) return;
+  router.push({ path: '/review', query: { symbol: row.symbol } });
+}
+
 onMounted(() => {
   // 初始化收益图表
   initProfitChart();
   
   // 从API获取股票数据
   fetchStockData();
+  
+  // 获取关注池
+  fetchFocusPool();
   
   // 获取投资总览数据
   fetchInvestmentOverview();
@@ -1355,6 +1434,70 @@ async function disableMonitor() {
         <el-button type="primary" @click="showBuyModal = true">
           <el-icon class="button-icon"><Plus /></el-icon>记一笔买入
         </el-button>
+      </div>
+    </section>
+
+    <!-- 第四区域：关注股票 -->
+    <section class="paper paper--focus">
+      <div class="pane-head">
+        <h2 class="pane-title">关注股票</h2>
+        <div class="pane-actions">
+          <span class="pane-note">「距买点」为负表示还要下跌多少才到第一档；没有关注档案时只显示行情</span>
+          <el-button size="small" @click="fetchFocusPool">刷新</el-button>
+        </div>
+      </div>
+
+      <p v-if="focusError" class="stat-error">读不到关注池：{{ focusError }}</p>
+      <el-table v-else-if="focusStocks.length" :data="focusStocks" stripe>
+        <el-table-column prop="symbol" label="股票代号" width="110" />
+        <el-table-column prop="stockName" label="股票名称" min-width="110">
+          <template #default="scope">
+            <span class="font-medium">{{ scope.row.stockName || '—' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="当前价格" width="110">
+          <template #default="scope">
+            <span class="font-bold">{{ focusPrice(scope.row) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="当天涨跌幅" width="120">
+          <template #default="scope">
+            <span v-if="scope.row.changePct == null">—</span>
+            <span v-else :class="scope.row.changePct >= 0 ? 'text-red-600' : 'text-green-600'">
+              {{ scope.row.changePct >= 0 ? '+' : '' }}{{ Number(scope.row.changePct).toFixed(2) }}%
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="关注状态" width="110">
+          <template #default="scope">
+            <span>{{ focusStatusLabel(scope.row) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="买入区间" width="130">
+          <template #default="scope">{{ focusBuyRange(scope.row) }}</template>
+        </el-table-column>
+        <el-table-column label="距买点" width="110">
+          <template #default="scope">{{ focusDistance(scope.row) }}</template>
+        </el-table-column>
+        <el-table-column label="报告日期" width="120">
+          <template #default="scope">{{ scope.row.profile?.reportDate || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="120">
+          <template #default="scope">
+            <el-button
+              type="primary"
+              size="small"
+              :disabled="!scope.row.profile"
+              @click="openFocusProfile(scope.row)"
+            >
+              查看档案
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div v-else class="empty-state">
+        <p class="empty-title">{{ focusLoading ? '正在读取关注池…' : '关注池还是空的' }}</p>
+        <p v-if="!focusLoading" class="empty-note">在报告库阅读个股报告，或让 OpenClaw 写入关注档案后，这里会列出关注股票。</p>
       </div>
     </section>
     
@@ -2277,6 +2420,16 @@ el-table-column {
 
 .paper--holdings {
   margin-top: 18px;
+}
+
+.paper--focus {
+  margin-top: 18px;
+}
+
+.pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* 三个指标：一条横排，不再套三张彩色小卡 */

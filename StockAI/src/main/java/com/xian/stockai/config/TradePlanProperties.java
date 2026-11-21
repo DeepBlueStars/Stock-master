@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 
 /**
  * @author xian
- * @description 交易计划配置（ATR 参数、批次档位、周报参数）
+ * @description 交易计划配置（ATR 参数、批次档位）
  */
 @Component
 @ConfigurationProperties(prefix = "trade-plan")
@@ -57,16 +57,6 @@ public class TradePlanProperties {
      * 降级止盈比例
      */
     private BigDecimal degradedTakeProfitRate = new BigDecimal("0.10");
-
-    /**
-     * 周报保留期数
-     */
-    private int summaryRetentionWeeks = 12;
-
-    /**
-     * 周报生成 cron
-     */
-    private String summaryCron = "0 0 8 ? * SAT";
 
     public int getAtrPeriod() {
         return atrPeriod;
@@ -138,21 +128,5 @@ public class TradePlanProperties {
 
     public void setDegradedTakeProfitRate(BigDecimal degradedTakeProfitRate) {
         this.degradedTakeProfitRate = degradedTakeProfitRate;
-    }
-
-    public int getSummaryRetentionWeeks() {
-        return summaryRetentionWeeks;
-    }
-
-    public void setSummaryRetentionWeeks(int summaryRetentionWeeks) {
-        this.summaryRetentionWeeks = summaryRetentionWeeks;
-    }
-
-    public String getSummaryCron() {
-        return summaryCron;
-    }
-
-    public void setSummaryCron(String summaryCron) {
-        this.summaryCron = summaryCron;
     }
 }

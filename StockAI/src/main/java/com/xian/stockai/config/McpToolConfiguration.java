@@ -1,6 +1,7 @@
 package com.xian.stockai.config;
 
 import com.xian.stockai.mcp.ExitMcpTools;
+import com.xian.stockai.mcp.FocusPoolMcpTools;
 import com.xian.stockai.mcp.ResearchMcpTools;
 import com.xian.stockai.mcp.StockAiMcpTools;
 import org.springframework.ai.tool.ToolCallbackProvider;
@@ -17,9 +18,10 @@ public class McpToolConfiguration {
     @Bean
     public ToolCallbackProvider stockAiToolCallbackProvider(StockAiMcpTools stockAiMcpTools,
                                                             ExitMcpTools exitMcpTools,
-                                                            ResearchMcpTools researchMcpTools) {
+                                                            ResearchMcpTools researchMcpTools,
+                                                            FocusPoolMcpTools focusPoolMcpTools) {
         return MethodToolCallbackProvider.builder()
-                .toolObjects(stockAiMcpTools, exitMcpTools, researchMcpTools)
+                .toolObjects(stockAiMcpTools, exitMcpTools, researchMcpTools, focusPoolMcpTools)
                 .build();
     }
 }

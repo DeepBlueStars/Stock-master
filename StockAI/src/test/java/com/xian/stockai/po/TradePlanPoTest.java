@@ -16,13 +16,6 @@ class TradePlanPoTest {
     }
 
     @Test
-    void summaryMapsToExpectedCollection() {
-        Document doc = TradePlanSummary.class.getAnnotation(Document.class);
-        assertNotNull(doc);
-        assertEquals("trade_plan_summary", doc.collection());
-    }
-
-    @Test
     void planExposesCoreFields() {
         TradePlan plan = new TradePlan();
         plan.setUserId("u1");

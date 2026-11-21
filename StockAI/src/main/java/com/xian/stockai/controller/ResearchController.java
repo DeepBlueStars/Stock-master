@@ -3,7 +3,10 @@ package com.xian.stockai.controller;
 import com.xian.stockai.po.MonitorEvent;
 import com.xian.stockai.po.ResearchReport;
 import com.xian.stockai.po.ReviewLevel;
+import com.xian.stockai.po.UserFavorites;
+import com.xian.stockai.service.FocusPoolService;
 import com.xian.stockai.service.ResearchService;
+import com.xian.stockai.vo.FocusStockView;
 import com.xian.stockai.vo.ReportBrief;
 import com.xian.stockai.vo.Result;
 import lombok.Getter;
@@ -27,6 +30,7 @@ import java.util.List;
 public class ResearchController {
 
     private final ResearchService researchService;
+    private final FocusPoolService focusPoolService;
 
     /* ---------------- 报告 ---------------- */
 
@@ -85,6 +89,43 @@ public class ResearchController {
         return researchService.updateEventStatus(request.getUserId(), request.getId(), request.getStatus());
     }
 
+    /* ---------------- 关注池 ---------------- */
+
+    @PostMapping("/focus/save")
+    public Result<UserFavorites.FocusProfile> saveFocusStock(@RequestBody UserFavorites.FocusProfile request) {
+        return focusPoolService.save(request.getUserId(), request);
+    }
+
+    @PostMapping("/focus/list")
+    public Result<List<FocusStockView>> listFocusStocks(@RequestBody UserReq request) {
+        return focusPoolService.list(request.getUserId());
+    }
+
+    /**
+     * 关注池全量（含还没有关注档案的股票），股票页面用
+     */
+    @PostMapping("/focus/pool")
+    public Result<List<FocusStockView>> listFocusPool(@RequestBody UserReq request) {
+        return focusPoolService.pool(request.getUserId());
+    }
+
+    @GetMapping("/focus/{symbol}")
+    public Result<FocusStockView> getFocusStock(@PathVariable String symbol,
+                                                @RequestParam(required = false) String userId) {
+        return focusPoolService.get(userId, symbol);
+    }
+
+    @PostMapping("/focus/status")
+    public Result<UserFavorites.FocusProfile> updateFocusStatus(@RequestBody FocusStatusReq request) {
+        return focusPoolService.updateStatus(request.getUserId(), request.getSymbol(), request.getStatus(),
+                request.getTier(), request.getTierStatus(), request.getNote());
+    }
+
+    @PostMapping("/focus/delete")
+    public Result<Void> deleteFocusStock(@RequestBody SymbolReq request) {
+        return focusPoolService.delete(request.getUserId(), request.getSymbol());
+    }
+
     @Getter
     @Setter
     public static class ReportListReq {
@@ -136,5 +177,16 @@ public class ResearchController {
         private String userId;
         private String id;
         private String status;
+    }
+
+    @Getter
+    @Setter
+    public static class FocusStatusReq {
+        private String userId;
+        private String symbol;
+        private String status;
+        private Integer tier;
+        private String tierStatus;
+        private String note;
     }
 }

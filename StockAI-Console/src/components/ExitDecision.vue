@@ -5,7 +5,6 @@ import { ElMessage } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import config from '../config/config'
 import CountUp from './CountUp.vue'
-import WeeklySummaryBlock from './TradePlan/WeeklySummaryBlock.vue'
 
 /**
  * 决策台：今日决策（卖出纪律）与交易计划（买入阶梯）合并为一页。
@@ -684,8 +683,6 @@ const statusClass = { ok: 'is-ok', warn: 'is-warn', tp1: 'is-tp1', nodata: 'is-o
         <div class="ref-cell"><span class="k">下次判定</span><span class="v">工作日 17:30</span></div>
       </div>
     </section>
-
-    <WeeklySummaryBlock :user-id="USER_ID" />
 
     <p class="foot-note">
       止损价、止盈线由卖出纪律引擎算出；判定每个交易日 17:30 跑一次（等日线落库之后）。
