@@ -10,7 +10,7 @@ spring:
       server:
         name: stockai-mcp
         version: 1.0.0
-        instructions: "StockAI 交易与持仓服务。可买入/卖出持仓，并查询持仓及预设的止盈止损价格。"
+        instructions: "StockAI 交易与持仓服务。可买入/卖出持仓，查询持仓及预设的止盈止损价格；并可保存研究报告、持仓复核线（价位与时间点）与监测日历事件。"
         capabilities:
           tool: true
     openai:
@@ -93,7 +93,8 @@ trade-plan:
   degraded-stop-loss-rate: 0.05
   degraded-take-profit-rate: 0.10
   summary-retention-weeks: 12
-  summary-cron: "0 0 8 ? * SAT"
+  # 周六 18:00 生成；本周若已有 OpenClaw 写入的组合报告则跳过
+  summary-cron: "0 0 18 ? * SAT"
 # 卖出纪律：L1 硬止损 / L2 移动止盈 / L4 分批止盈
 # 判定时点放在 17:30，等 etf-service 16:00~16:20 的日线任务先落库
 exit:

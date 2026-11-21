@@ -20,6 +20,7 @@
           <tr>
             <th class="c-name">资产</th>
             <th class="c-num">当前比例</th>
+            <th class="c-num">相差比例</th>
             <th class="c-num">目标金额</th>
             <th class="c-num">差额</th>
           </tr>
@@ -32,6 +33,7 @@
               <span v-if="getAssetTypeLabel(row.type) !== row.name" class="type">{{ getAssetTypeLabel(row.type) }}</span>
             </td>
             <td class="c-num num">{{ formatRatio(row.actualRatio) }}<span class="unit">%</span></td>
+            <td class="c-num num" :class="diffClass(row.diffRatio)">{{ signedRatio(row.diffRatio) }}<span class="unit">%</span></td>
             <td class="c-num num">{{ money(row.expectedAmount) }}</td>
             <td class="c-num num" :class="diffClass(row.diffAmount)">{{ signed(row.diffAmount) }}</td>
           </tr>
@@ -40,6 +42,7 @@
           <tr>
             <td class="c-name">合计</td>
             <td class="c-num num">{{ totalAmount > 0 ? '100' : '0' }}<span class="unit">%</span></td>
+            <td class="c-num num muted">—</td>
             <td class="c-num num">{{ money(totalAmount) }}</td>
             <td class="c-num num muted">—</td>
           </tr>
@@ -84,6 +87,7 @@ const assetDetails = computed(() =>
       currentAmount,
       actualRatio,
       expectedAmount,
+      diffRatio: totalAmount.value > 0 ? asset.ratio - actualRatio : 0,
       diffAmount: expectedAmount - currentAmount
     };
   })
@@ -112,6 +116,14 @@ const signed = (n) => {
   const v = Number(n) || 0;
   if (Math.abs(v) < 0.005) return '0.00';
   return (v > 0 ? '+' : '−') + nf.format(Math.abs(v));
+};
+// 相差比例 = 目标比例 − 当前比例，正数表示还需买入，负数表示超出目标
+const signedRatio = (n) => {
+  const v = Number(n) || 0;
+  if (Math.abs(v) < 0.05) return '0';
+  const abs = Math.round(Math.abs(v) * 10) / 10;
+  const text = Number.isInteger(abs) ? String(abs) : abs.toFixed(1);
+  return (v > 0 ? '+' : '−') + text;
 };
 const diffClass = (n) => {
   const v = Number(n) || 0;
@@ -189,12 +201,12 @@ const diffClass = (n) => {
 }
 
 .ledger .c-name {
-  width: 34%;
+  width: 30%;
   padding-left: 2px;
 }
 
 .ledger .c-num {
-  width: 22%;
+  width: 17.5%;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }

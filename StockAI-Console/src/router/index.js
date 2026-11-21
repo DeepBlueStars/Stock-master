@@ -4,6 +4,8 @@ import Dashboard from '../components/Dashboard.vue'
 import Config from '../components/Config.vue'
 import MarketOverview from '../components/MarketOverview.vue'
 import ExitDecision from '../components/ExitDecision.vue'
+import ReportLibrary from '../components/ReportLibrary.vue'
+import ReviewBoard from '../components/ReviewBoard.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -44,6 +46,16 @@ const router = createRouter({
       path: '/decide',
       name: '决策台',
       component: ExitDecision
+    },
+    {
+      path: '/review',
+      name: '复核台',
+      component: ReviewBoard
+    },
+    {
+      path: '/reports',
+      name: '报告库',
+      component: ReportLibrary
     }
   ]
 })

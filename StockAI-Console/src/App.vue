@@ -7,6 +7,8 @@ import {
   Document as IconDocument,
   TrendCharts as IconTrend,
   Setting as IconSetting,
+  List as IconList,
+  Notebook as IconNotebook,
   Bell as IconBell,
   Moon as IconMoon,
   Sunny as IconSunny,
@@ -23,6 +25,8 @@ const route = useRoute()
 const navItems = [
   { path: '/', label: '总览', icon: IconGrid },
   { path: '/decide', label: '决策台', icon: IconAim },
+  { path: '/review', label: '复核台', icon: IconList },
+  { path: '/reports', label: '报告库', icon: IconNotebook },
   { path: '/stock', label: '股票', icon: IconDocument },
   { path: '/market', label: '市场', icon: IconTrend },
   { path: '/config', label: '配置', icon: IconSetting }

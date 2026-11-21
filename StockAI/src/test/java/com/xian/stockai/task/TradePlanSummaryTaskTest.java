@@ -3,6 +3,7 @@ package com.xian.stockai.task;
 import com.xian.stockai.dao.PositionRepository;
 import com.xian.stockai.po.Position;
 import com.xian.stockai.po.TradePlanSummary;
+import com.xian.stockai.service.ResearchService;
 import com.xian.stockai.service.tradeplan.TradePlanSummaryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,9 +13,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,12 +31,15 @@ class TradePlanSummaryTaskTest {
     private PositionRepository positionRepository;
     @Mock
     private TradePlanSummaryService summaryService;
+    @Mock
+    private ResearchService researchService;
 
     private TradePlanSummaryTask task;
 
     @BeforeEach
     void setUp() {
-        task = new TradePlanSummaryTask(positionRepository, summaryService);
+        task = new TradePlanSummaryTask(positionRepository, summaryService, researchService);
+        when(researchService.hasPortfolioReportSince(anyString(), any(LocalDate.class))).thenReturn(false);
     }
 
     private Position position(String userId) {
@@ -66,5 +74,20 @@ class TradePlanSummaryTaskTest {
 
         assertEquals(0, failed);
         verify(summaryService, org.mockito.Mockito.times(1)).generateWeekly("u1");
+    }
+
+    @Test
+    void skipsUserWhoAlreadyUploadedPortfolioReportThisWeek() {
+        when(positionRepository.findByTotalQuantityGreaterThan(0))
+                .thenReturn(List.of(position("u1"), position("u2")));
+        when(researchService.hasPortfolioReportSince(anyString(), any(LocalDate.class)))
+                .thenReturn(true, false);
+        when(summaryService.generateWeekly("u2")).thenReturn(new TradePlanSummary());
+
+        int failed = task.generateAll();
+
+        assertEquals(0, failed);
+        verify(summaryService, never()).generateWeekly("u1");
+        verify(summaryService).generateWeekly("u2");
     }
 }
